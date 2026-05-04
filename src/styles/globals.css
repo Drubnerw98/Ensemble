@@ -1,0 +1,34 @@
+@import "tailwindcss";
+
+@import url("https://fonts.googleapis.com/css2?family=Fira+Sans:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap");
+
+/* Surface Tailwind tokens for fonts + the semantic color names used across
+   the app. The visual identity is intentionally placeholder — pick a real
+   palette once we've brainstormed the look. Until then we share Resonance's
+   dark base so the three apps don't look unrelated at a glance. */
+@theme {
+  --font-sans:
+    "Fira Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-display: "Fira Code", ui-monospace, "SF Mono", Menlo, monospace;
+  --font-mono: "Fira Code", ui-monospace, "SF Mono", Menlo, monospace;
+
+  --color-bg: #05060a;
+  --color-text: #e9ecf2;
+  --color-text-muted: #a1a8b3;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  width: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}

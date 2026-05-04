@@ -1,0 +1,190 @@
+# CLAUDE.md — Ensemble
+
+Working rules for this project. Loads on every Claude Code conversation in this repo. Update as the project evolves — this file is the source of truth for *how* we work; `decisions.md` is the source of truth for *what* we've decided.
+
+## What this is
+
+Ensemble is a real-time multi-user companion to **Resonance** and **Constellation** — the third app in a deliberately paired ecosystem.
+
+- **Resonance** ([github.com/Drubnerw98/Resonance](https://github.com/Drubnerw98/Resonance)) maps a user's taste DNA into a structured profile and recommends across formats.
+- **Constellation** ([github.com/Drubnerw98/Constellation](https://github.com/Drubnerw98/Constellation)) visualizes that profile as a force-directed canvas.
+- **Ensemble** is the layer where two or more users converge their profiles in real time and decide what to watch, read, or play together.
+
+Shared Clerk OAuth across all three. Reads Resonance's API via bearer token (the same pattern Constellation uses). Adds a real-time multi-user surface that the other two don't have.
+
+## Why this project exists
+
+Drub is building Ensemble as a portfolio piece to demonstrate distributed-systems intuition (sync engines, presence, conflict resolution, optimistic UI) on top of an ecosystem that already shows full-stack AI work (Resonance) and visual craft (Constellation).
+
+**Every architectural decision needs to be one drub can defend in an interview.** That's the bar, not "did the feature ship." The decisions log is the artifact that proves it.
+
+## The engineer-vs-implementer boundary
+
+**Drub makes the architectural calls. Claude implements.** This is a hard rule.
+
+### Drub:
+
+- Makes architectural decisions (data model, library choice, scope, abstraction boundaries)
+- Owns what ships at MVP and what cuts
+- Decides when to graduate, refactor, or rewrite
+- Reviews and approves every entry in `decisions.md`
+
+### Claude:
+
+- Implements features once the architecture is locked
+- Refactors, writes tests, debugs, types
+- **Surfaces options + tradeoffs when a real decision is needed; does NOT pick.**
+- Drafts decision-log entries for drub to review and refine
+
+### When Claude has a decision to make
+
+If Claude hits a decision point with a real tradeoff (library choice, schema shape, abstraction boundary, error-handling pattern, sync-state model, persistence shape), **stop the implementation**. Surface 2-3 options with their tradeoffs and ask. Do not guess. Do not pick the "obvious" default. The whole point of this constraint is that drub can articulate every call live in an interview.
+
+### What "real tradeoff" means
+
+Not every choice is architectural. Naming a variable, picking which test to write first, deciding between `.ts` and `.tsx` for a file — those are implementation choices. Just do them.
+
+A **real tradeoff** is one where:
+
+- Two or more options have meaningfully different long-term consequences
+- An interviewer might plausibly ask *"why did you pick X over Y?"*
+- The wrong answer would be hard to undo
+
+When in doubt, pause and ask. The cost of one extra question is low; the cost of an architectural call drub can't defend is high.
+
+## Decision-asking protocol
+
+When a real tradeoff comes up:
+
+1. **Stop the implementation.**
+2. **Surface options** in this format: option name → what it gets you → tradeoff accepted.
+3. **Recommend** one with reasoning.
+4. **Wait for drub to greenlight or push back.**
+5. **Once decided, draft the entry for `decisions.md`.** Drub reviews/edits.
+
+## What gets logged to `decisions.md`
+
+Every architectural call gets an entry in this format:
+
+```
+## [YYYY-MM-DD] — [Decision title]
+
+**Considered**: option A, option B, option C.
+**Decision**: chosen option.
+**Why**: reasoning, in drub's voice — this is what an interviewer will hear.
+**Tradeoff accepted**: the cost being paid.
+**Would revisit if**: conditions that would tip the call.
+```
+
+The bar for logging: would an interviewer plausibly ask *"why did you pick X over Y?"* If yes, log it. Implementation choices don't need entries.
+
+The **"Would revisit if"** line is non-optional. Naming the conditions that would invalidate a call — instead of claiming the decision is correct forever or apologizing for it — is the senior-engineer move.
+
+## Working preferences (drub)
+
+These come from drub's global preferences. Restated here in case the global doesn't load in this environment.
+
+**Communication shape:**
+
+- Brief responses. State what's about to happen, run the work, summarize what changed. No padding, no running narration.
+- Greenlights are short ("yeah", "send it", "go"). Don't ask for re-confirmation when drub has already approved a plan.
+- No emojis in regular communication.
+- End-of-turn summaries: 1-2 sentences.
+
+**Engineering judgment:**
+
+- Push back when you disagree. Drub explicitly invites it. Saying yes to bad ideas is worse than friction.
+- If something feels bigger than drub thinks, say so honestly. Scope honesty over forced optimism.
+- Quality > speed for AI features. Don't propose Haiku/cost-saving swaps unsolicited.
+- Drub is a self-taught dev with deep TS/React/Node and product instincts. Treat as a senior collaborator who appreciates pushback.
+
+**Workflow rhythm:**
+
+- Run typecheck and (for frontend) build before claiming work done.
+- Commit at meaningful checkpoints. Bare one-line subject; body if needed; trailer:
+  `Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>`
+- Never push to remote unless drub asks. Never amend a published commit. Never skip hooks (`--no-verify`). Never force-push to main.
+- DB migrations: confirm before applying against any shared environment.
+
+## Engineering principles (apply by default)
+
+These are drub's principles, demonstrated working in Resonance and now applied to Ensemble. Flag deviations.
+
+1. **Schema as contract AND validator.** One Zod schema constrains the API/sync surface AND validates at runtime. Same schema, both jobs.
+2. **Validate at boundaries, trust internals.** External APIs (Resonance, Liveblocks events), user input, sync events — validate. Internal function signatures — trust the type system.
+3. **Server-enforce, don't trust clients.** Liveblocks rooms can be authenticated server-side; auth/authorization rules belong there, not in the client.
+4. **Defense-in-depth on auth.** Every user-scoped operation checks user identity explicitly, even past auth middleware.
+5. **Status-coded errors for user-state.** Throw `Error & { status: number }` for non-server faults; centralized handler maps `.status` to HTTP code.
+6. **`Promise.allSettled` when one failure shouldn't kill the batch.**
+7. **Premature scale is wrong; graduate when the failure mode bites.** Liveblocks-managed first, self-hosted Yjs later if and only if the failure mode actually appears.
+8. **Restraint over completeness.** Cut weak features, ship strong ones cleanly. Same restraint Constellation applied to per-item rationale.
+9. **Heuristics with stated tradeoffs are fine.** When no closed-form solution exists, name the tradeoff explicitly.
+10. **Comments answer WHY, never WHAT.** Constraints, invariants, surprising behavior, references to past incidents.
+
+## Stack (locked)
+
+- **Frontend**: Vite + React 19 + TypeScript (matches Constellation)
+- **Auth**: Clerk (shared OAuth instance with Resonance + Constellation)
+- **Real-time**: Liveblocks (managed sync, free tier)
+- **Resonance integration**: bearer token via Clerk session (same pattern as Constellation)
+- **Hosting**: Vercel SPA, no new backend service for MVP
+- **Styling**: TBD — likely Tailwind v4 (matches the other two), but lock in `decisions.md` when set up
+
+## Current state
+
+**Phase**: Initialization. Repo created, decisions logged, no code shipped.
+
+**Architectural decisions locked** (see `decisions.md`):
+
+1. Project name: Ensemble
+2. Sync engine: Liveblocks
+3. Persistence: ephemeral sessions for MVP
+4. Auth scope: Resonance users only
+5. Session sharing: opaque link + 6-character room code
+6. Resonance read access: bearer-token pattern
+7. Hosting: Vercel SPA + Liveblocks managed
+
+**Next step**: Vite + Clerk auth scaffolding, fetch own profile from Resonance.
+
+## Build steps (rough order, not strict)
+
+Drub said no week-by-week — here are the discrete steps. Adjust as we learn.
+
+1. **Initialize**: ✅ repo, CLAUDE.md, decisions.md done. Next: `pnpm create vite`, set up TS + ESLint + Prettier matching Constellation's pattern.
+2. **Auth + Resonance read**: Clerk scaffolding, sign in, fetch own profile from Resonance via bearer token.
+3. **Session shell, single-user**: create / join a session by URL or code, see a (manual-add) candidate list.
+4. **Wire Liveblocks**: two browsers in the same session see live state updates (presence, shared list).
+5. **Voting + presence**: per-user vote events, who's online + who's voted indicators.
+6. **Consensus flow**: threshold logic, "tonight's pick" surfaces.
+7. **Mobile breakpoints + polish**: responsive layout, empty states, edge cases.
+8. **Deploy + real-user test**: ship to Vercel, run it with a friend.
+
+## External dependencies
+
+- **Resonance API**: `https://resonance-server-t4r8.onrender.com/api/*`
+  - Bearer-token authenticated via Clerk session token
+  - Endpoints used: `/profile/export` (existing). New endpoints may be needed and will be added to Resonance as separate, controlled changes.
+- **Liveblocks**: `liveblocks.io` — managed sync service, free tier
+- **Clerk**: shared OAuth instance with Resonance + Constellation
+- **Vercel**: frontend hosting
+
+## Conventions to lock when scaffolding
+
+These are TBD until the repo is initialized — log decisions to `decisions.md` as they're locked.
+
+- Directory layout (`src/components/`, `src/routes/`, `src/lib/`, etc.)
+- Styling system (Tailwind config, font stack, color tokens)
+- Test setup (Vitest? happy-dom?)
+- CI workflow (GitHub Actions matching Constellation's `check.yml` pattern)
+- Commit prefix conventions (or none — match drub's existing repos)
+
+## A note on the decisions log
+
+The `Why` lines in `decisions.md` are the most important part of this whole project. Each one is what drub will say in an interview when asked *"walk me through that call."*
+
+Initial entries were drafted from our scoping conversation. **Drub: review each `Why` and edit any phrasing that doesn't sound like you.** The reasoning should match what you'd actually say live.
+
+## Side notes written by me
+
+In any writing you do avoid overtly AI seeming tells such as M Dashes, avoid usage of emojis
+
