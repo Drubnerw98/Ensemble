@@ -1,8 +1,16 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
+import { ClerkProvider } from "@clerk/clerk-react";
 import { App } from "./App";
 import "./styles/globals.css";
+
+const publishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+if (!publishableKey) {
+  throw new Error(
+    "VITE_CLERK_PUBLISHABLE_KEY is not set — see .env.local.example",
+  );
+}
 
 const rootEl = document.getElementById("root");
 if (!rootEl) throw new Error("Root element not found");
@@ -10,7 +18,9 @@ if (!rootEl) throw new Error("Root element not found");
 createRoot(rootEl).render(
   <StrictMode>
     <BrowserRouter>
-      <App />
+      <ClerkProvider publishableKey={publishableKey}>
+        <App />
+      </ClerkProvider>
     </BrowserRouter>
   </StrictMode>,
 );

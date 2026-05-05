@@ -1,12 +1,25 @@
+import { Navigate, Route, Routes } from "react-router-dom";
+import { SignedIn, SignedOut } from "@clerk/clerk-react";
+import { Home } from "./routes/Home";
+import { Landing } from "./routes/Landing";
+
 export function App() {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-bg p-6 text-text">
-      <div className="max-w-md text-center">
-        <h1 className="font-display text-3xl tracking-tight">Ensemble</h1>
-        <p className="mt-3 text-sm text-text-muted">
-          Real-time taste convergence. Sign in coming next.
-        </p>
-      </div>
-    </main>
+    <Routes>
+      <Route
+        path="/"
+        element={
+          <>
+            <SignedIn>
+              <Home />
+            </SignedIn>
+            <SignedOut>
+              <Landing />
+            </SignedOut>
+          </>
+        }
+      />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }
