@@ -115,17 +115,16 @@ function MemberChip({
 }
 
 function RoomCodeCard({ code }: { code: string }) {
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<"code" | "link" | null>(null);
   const url = typeof window !== "undefined" ? window.location.href : "";
 
-  async function copy(text: string) {
+  async function copy(text: string, kind: "code" | "link") {
     try {
       await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
+      setCopied(kind);
+      setTimeout(() => setCopied(null), 1500);
     } catch {
-      // clipboard.writeText can reject in non-secure contexts or when the
-      // tab is unfocused — the user can still copy manually from the field.
+      // clipboard.writeText can reject in non-secure contexts.
     }
   }
 
@@ -135,21 +134,26 @@ function RoomCodeCard({ code }: { code: string }) {
         Session code
       </p>
       <div className="mt-3 flex flex-wrap items-center gap-3">
-        <button
-          type="button"
-          onClick={() => copy(code)}
-          className="cursor-pointer rounded-md border border-white/10 px-3 py-2 font-mono text-2xl tracking-[0.3em] text-text hover:bg-white/5"
+        <span
+          aria-label={`Session code ${code}`}
+          className="rounded-md border border-white/10 px-3 py-2 font-mono text-2xl tracking-[0.3em] text-text select-all"
         >
           {code}
+        </span>
+        <button
+          type="button"
+          onClick={() => copy(code, "code")}
+          className="cursor-pointer rounded-md border border-white/10 px-3 py-1.5 text-xs text-text-muted transition-colors hover:bg-white/5 hover:text-text"
+        >
+          {copied === "code" ? "Copied" : "Copy code"}
         </button>
         <button
           type="button"
-          onClick={() => copy(url)}
-          className="cursor-pointer text-xs text-text-muted underline-offset-4 hover:text-text hover:underline"
+          onClick={() => copy(url, "link")}
+          className="cursor-pointer rounded-md border border-white/10 px-3 py-1.5 text-xs text-text-muted transition-colors hover:bg-white/5 hover:text-text"
         >
-          Copy link
+          {copied === "link" ? "Copied" : "Copy link"}
         </button>
-        {copied && <span className="text-xs text-text-muted">copied</span>}
       </div>
     </div>
   );
