@@ -101,3 +101,45 @@ The `Why` line in each entry is what an interviewer will hear from drub when ask
 **Tradeoff accepted**: Three managed services in the dependency chain. Cost predictability depends on each provider's pricing changes. If any one of them has an outage, the relevant feature breaks.
 
 **Would revisit if**: Liveblocks costs become significant, or reliability becomes a problem. Then graduate to self-hosted Yjs on Render alongside Resonance, sharing the long-lived Node process. Same graduation pattern as the rest of the engineering principles.
+
+---
+
+## 2026-05-05 — Liveblocks auth: token-mint via Vercel serverless function
+
+**Considered**: **Public-key only** (frontend connects with Liveblocks publishable key, anyone with a room ID + the public key can join), **token-mint via Vercel function** (`/api/liveblocks-auth.ts` verifies the Clerk session server-side, mints a per-room Liveblocks JWT scoped via `session.allow(room, FULL_ACCESS)`).
+
+**Decision**: Token-mint via Vercel serverless function.
+
+**Why**: The Auth Scope decision was "Resonance users only," and Defense-in-Depth says enforce server-side. Public-key would let anyone on the internet with a guessed room ID join — the principle says no. Cost is small: one Vercel Node function on the existing Vercel project, no new service. The function is ~40 lines: verify Clerk token, fetch the user's display info, mint the Liveblocks token. Same shape as Resonance's existing Express middleware — server is the source of truth on identity.
+
+**Tradeoff accepted**: One serverless function on Vercel to maintain; cold-start on the function (Vercel Node functions warm fast but the first connect after a quiet period takes ~200-500ms); two new env vars on Vercel (`CLERK_SECRET_KEY`, `LIVEBLOCKS_SECRET_KEY`).
+
+**Would revisit if**: The function becomes a bottleneck (high concurrency joining at once) — at that scale, move to Edge runtime. If we ever wanted unauthenticated guest mode (per the Auth Scope "Would revisit if"), the auth endpoint becomes the natural place to mint guest tokens with restricted access.
+
+---
+
+## 2026-05-05 — Session ID strategy: room code IS the Liveblocks room ID
+
+**Considered**: **Code IS room ID** (6-char `[A-HJKMNP-Z2-9]` code is both the URL slug and the Liveblocks room ID, no mapping layer), **opaque ID + code alias** (Liveblocks room is a cuid; the 6-char code is a separate alias mapped via a KV store or Resonance DB).
+
+**Decision**: Code IS room ID for MVP.
+
+**Why**: Sessions are ephemeral (per the persistence decision). With ephemeral state, there's no shared mapping layer to maintain — when the room dies, so does the code. ~10⁹ codes from a 31-char alphabet is plenty for the traffic an MVP sees, and visually-ambiguous chars (0/O/1/I/L) are removed so codes are speakable. Adds zero infrastructure: no KV, no DB write, no API surface. Joining a session is literally entering a room ID.
+
+**Tradeoff accepted**: Brute-force enumeration is theoretically possible (10⁹ space, but the auth function is rate-limited by Vercel and only Resonance users can mint tokens). Code length is fixed at 6 — switching to 7 later would be a one-line change but breaks any links anyone has bookmarked.
+
+**Would revisit if**: Persistence comes back (per the persistence "Would revisit if"), or session lifetime stretches past one sitting. At that point a stable opaque ID becomes load-bearing and codes become aliases that can be retired.
+
+---
+
+## 2026-05-05 — Candidate source: manual title-only for first cut
+
+**Considered**: **Manual title-only** (any member types a title, all see it), **pull from one user's Resonance recs** (signed-in user's recommendation list becomes the candidate pool, others vote on it), **cross-reference both users' Resonance profiles** (intersection of taste signals seeds the pool).
+
+**Decision**: Manual title-only for the first end-to-end cut. Resonance integration and cross-referencing are separate, sequenced checkpoints.
+
+**Why**: Goal of the first Liveblocks cut is to prove the sync layer works end-to-end (two browsers, same list, presence). Pulling from Resonance recs adds a fetch + dedup layer that has nothing to do with whether sync is correct — bundling them obscures which thing broke when something does. Each future variant is a PR-sized addition: "pull recs into a session" is one checkpoint, "cross-reference profiles" is another.
+
+**Tradeoff accepted**: The first deployable version is functionally lo-fi — typing titles by hand isn't the long-term experience. Acceptable because real-user testing requires the sync layer working first, and we can layer the Resonance integration on top once that foundation is verified.
+
+**Would revisit if**: Never — this is explicitly first-cut. The next checkpoint already has "pull from Resonance recs" planned.
