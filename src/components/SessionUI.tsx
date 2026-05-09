@@ -154,7 +154,7 @@ export function SessionUI({ code }: { code: string }) {
   const reconsider = useMutation(({ storage, self }) => {
     const c = storage.get("consensus");
     if (self.id !== c.get("hostId")) return; // host-only
-    if (c.get("phase") !== "decided") return; // already voting
+    if (c.get("phase") !== "decided") return; // only valid from decided phase
     c.update({
       phase: "voting",
       winnerId: null,
