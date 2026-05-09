@@ -172,6 +172,13 @@ export function SessionUI({ code }: { code: string }) {
     }
   }, []);
 
+  const setHost = useMutation(({ storage }, newHostId: string) => {
+    const c = storage.get("consensus");
+    // Idempotent: only write when current host actually needs replacing.
+    if (c.get("hostId") === newHostId) return;
+    c.set("hostId", newHostId);
+  }, []);
+
   useEffect(() => {
     if (consensus.phase !== "voting") return;
     // Liveblocks widens nested LiveObject fields to Lson via the
@@ -190,6 +197,32 @@ export function SessionUI({ code }: { code: string }) {
     presentMemberIds,
     lockConsensus,
   ]);
+
+  useEffect(() => {
+    if (!self.id) return;
+    const hostId = consensus.hostId;
+    const present: { id: string; connectionId: number }[] = [];
+    if (self.id) {
+      present.push({ id: self.id, connectionId: self.connectionId });
+    }
+    for (const o of others) {
+      if (o.id) present.push({ id: o.id, connectionId: o.connectionId });
+    }
+    if (present.length === 0) return;
+
+    const hostStillPresent = present.some((p) => p.id === hostId);
+    if (hostStillPresent) return;
+
+    // Lowest connectionId = longest-connected = deterministic across
+    // clients. Whoever fits the rule writes the migration; CRDT picks
+    // one if multiple write at once.
+    const successor = present.reduce((min, p) =>
+      p.connectionId < min.connectionId ? p : min,
+    );
+    if (successor.id === self.id) {
+      setHost(self.id);
+    }
+  }, [self.id, self.connectionId, others, consensus.hostId, setHost]);
 
   return (
     <main className="min-h-screen bg-bg p-6 text-text">
