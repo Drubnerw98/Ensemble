@@ -1,18 +1,19 @@
 import { useCallback } from "react";
 import { Navigate, useParams } from "react-router-dom";
-import { useAuth } from "@clerk/clerk-react";
+import { useAuth, useUser } from "@clerk/clerk-react";
 import {
   ClientSideSuspense,
   LiveblocksProvider,
   RoomProvider,
 } from "@liveblocks/react/suspense";
-import { LiveList, LiveMap } from "@liveblocks/client";
+import { LiveList, LiveMap, LiveObject } from "@liveblocks/client";
 import { isValidSessionCode } from "../lib/sessionCode";
 import { SessionUI } from "../components/SessionUI";
 
 export function Session() {
   const { code } = useParams<{ code: string }>();
   const { getToken } = useAuth();
+  const { user } = useUser();
 
   const authEndpoint = useCallback(
     async (room?: string) => {
@@ -47,6 +48,14 @@ export function Session() {
         initialStorage={{
           candidates: new LiveList([]),
           votes: new LiveMap(),
+          consensus: new LiveObject({
+            hostId: user?.id ?? "",
+            threshold: { kind: "unanimous" as const },
+            phase: "voting" as const,
+            winnerId: null,
+            tiedIds: [],
+            decidedAt: null,
+          }),
         }}
       >
         <ClientSideSuspense
