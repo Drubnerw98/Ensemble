@@ -151,6 +151,23 @@ export function SessionUI({ code }: { code: string }) {
     [],
   );
 
+  const reconsider = useMutation(({ storage, self }) => {
+    const c = storage.get("consensus");
+    if (self.id !== c.get("hostId")) return; // host-only
+    if (c.get("phase") !== "decided") return; // already voting
+    c.update({
+      phase: "voting",
+      winnerId: null,
+      tiedIds: [],
+      decidedAt: null,
+    });
+    // Full vote reset — see spec for rationale.
+    const votesMap = storage.get("votes");
+    for (const key of Array.from(votesMap.keys())) {
+      votesMap.delete(key);
+    }
+  }, []);
+
   useEffect(() => {
     if (consensus.phase !== "voting") return;
     // Liveblocks widens nested LiveObject fields to Lson via the
@@ -204,9 +221,7 @@ export function SessionUI({ code }: { code: string }) {
             voterIds={votes.get(consensus.winnerId) ?? EMPTY_VOTER_LIST}
             userInfoById={userInfoById}
             isHost={isHost}
-            onReconsider={() => {
-              /* wired in Task 8 */
-            }}
+            onReconsider={reconsider}
           />
         ) : null}
 
