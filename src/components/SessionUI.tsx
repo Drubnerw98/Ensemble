@@ -72,6 +72,7 @@ export function SessionUI({ code }: { code: string }) {
 
   const addCandidate = useMutation(
     ({ storage }, title: string) => {
+      if (storage.get("consensus").get("phase") !== "voting") return;
       storage.get("candidates").push(
         new LiveObject<Candidate>({
           id: crypto.randomUUID(),
@@ -85,6 +86,7 @@ export function SessionUI({ code }: { code: string }) {
   );
 
   const removeCandidate = useMutation(({ storage }, id: string) => {
+    if (storage.get("consensus").get("phase") !== "voting") return;
     const list = storage.get("candidates");
     const votesMap = storage.get("votes");
     for (let i = list.length - 1; i >= 0; i--) {
@@ -99,6 +101,7 @@ export function SessionUI({ code }: { code: string }) {
   }, []);
 
   const castVote = useMutation(({ storage, self }, candidateId: string) => {
+    if (storage.get("consensus").get("phase") !== "voting") return;
     const votesMap = storage.get("votes");
     const list = votesMap.get(candidateId);
     if (!list) {
@@ -112,6 +115,7 @@ export function SessionUI({ code }: { code: string }) {
   }, []);
 
   const unvote = useMutation(({ storage, self }, candidateId: string) => {
+    if (storage.get("consensus").get("phase") !== "voting") return;
     const votesMap = storage.get("votes");
     const list = votesMap.get(candidateId);
     if (!list) return;
@@ -251,6 +255,7 @@ export function SessionUI({ code }: { code: string }) {
           votes={votes}
           userInfoById={userInfoById}
           votedCandidateIds={votedCandidateIds}
+          locked={consensus.phase === "decided"}
           onAdd={addCandidate}
           onRemove={removeCandidate}
           onVote={castVote}
@@ -332,6 +337,7 @@ function CandidatesPanel({
   votes,
   userInfoById,
   votedCandidateIds,
+  locked,
   onAdd,
   onRemove,
   onVote,
@@ -341,6 +347,7 @@ function CandidatesPanel({
   votes: ReadonlyMap<string, readonly string[]>;
   userInfoById: ReadonlyMap<string, UserInfo>;
   votedCandidateIds: ReadonlySet<string>;
+  locked: boolean;
   onAdd: (title: string) => void;
   onRemove: (id: string) => void;
   onVote: (id: string) => void;
@@ -367,9 +374,10 @@ function CandidatesPanel({
             onChange={(e) => setDraft(e.target.value)}
             placeholder="Add a title…"
             maxLength={120}
+            disabled={locked}
             className="flex-1 rounded-md border border-border bg-transparent px-3 py-2 text-sm text-text placeholder:text-text-muted/60 focus:border-border-strong focus:outline-none"
           />
-          <Button type="submit" variant="primary" disabled={!draft.trim()}>
+          <Button type="submit" variant="primary" disabled={locked || !draft.trim()}>
             Add
           </Button>
         </form>
@@ -387,6 +395,7 @@ function CandidatesPanel({
                 voterIds={votes.get(c.id) ?? EMPTY_VOTER_LIST}
                 userInfoById={userInfoById}
                 voted={votedCandidateIds.has(c.id)}
+                locked={locked}
                 onVote={onVote}
                 onUnvote={onUnvote}
                 onRemove={onRemove}
@@ -404,6 +413,7 @@ function CandidateRow({
   voterIds,
   userInfoById,
   voted,
+  locked,
   onVote,
   onUnvote,
   onRemove,
@@ -412,6 +422,7 @@ function CandidateRow({
   voterIds: readonly string[];
   userInfoById: ReadonlyMap<string, UserInfo>;
   voted: boolean;
+  locked: boolean;
   onVote: (id: string) => void;
   onUnvote: (id: string) => void;
   onRemove: (id: string) => void;
@@ -431,6 +442,7 @@ function CandidateRow({
         <Button
           size="sm"
           variant={voted ? "primary" : "secondary"}
+          disabled={locked}
           onClick={() =>
             voted ? onUnvote(candidate.id) : onVote(candidate.id)
           }
@@ -440,6 +452,7 @@ function CandidateRow({
         <Button
           size="sm"
           variant="ghost"
+          disabled={locked}
           onClick={() => onRemove(candidate.id)}
         >
           remove
