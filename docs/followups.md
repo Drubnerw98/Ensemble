@@ -19,7 +19,9 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 ### 2026-05-09 — Cross-site visual audit (Resonance + Constellation + Ensemble)
 
-**What:** Once all three apps reach roughly 95% complete, run a deliberate visual audit across the three to harmonize palette, type, spacing, and motion vocabulary. Each app keeps its own identity but the three feel like one ecosystem.
+**What:** Once all three apps reach roughly 95% complete, run a deliberate visual audit across the three to harmonize palette, type, spacing, motion vocabulary, AND favicon / app-icon family. Each app keeps its own identity but the three feel like one ecosystem.
+
+Note (2026-05-09): all three currently have SVG favicons that follow a loose family pattern — Resonance is concentric circles in emerald on `#0a0a0a`, Constellation is a star network in pale amber on `#05060a`, Ensemble is three overlapping saffron circles on `#05060a`. The audit should harmonize: dark-base hex (currently slightly inconsistent: `#0a0a0a` vs `#05060a`), accent color story (one accent per app, picked deliberately), corner radius (Resonance has `rx=5`, others have none), and add the missing PNG variants (Apple touch icon 180x180, OG image, manifest icons 192/512) coordinated across all three.
 
 **Why noticed:** Surfaced during the Ensemble visual-system brainstorm on 2026-05-09. The Ensemble work was deliberately scoped so its tokens are extractable rather than baked-in, which makes a future audit cheap. Drub's stated goal is for the three apps to feel related but distinct. The Resonance dark base (`#05060a`) is already shared by all three.
 
