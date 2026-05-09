@@ -1,5 +1,4 @@
-// useEffect imported here for Task 7 (transition detection)
-import { /* useEffect, */ useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { UserButton, useUser } from "@clerk/clerk-react";
 import {
@@ -10,8 +9,7 @@ import {
 } from "@liveblocks/react/suspense";
 import { LiveList, LiveObject } from "@liveblocks/client";
 import type { Candidate, ThresholdRule } from "../lib/liveblocks";
-// evaluate imported for Task 7 (consensus transition detection)
-// import { evaluate } from "../lib/consensus";
+import { evaluate } from "../lib/consensus";
 import { AvatarStack, Button, Card } from "./ui";
 import { HeroCard } from "./HeroCard";
 import { ThresholdPicker } from "./ThresholdPicker";
@@ -56,6 +54,12 @@ export function SessionUI({ code }: { code: string }) {
   }, [self.id, others]);
 
   const isHost = self.id === consensus.hostId;
+
+  const votesSnapshot = useMemo(() => {
+    const map = new Map<string, readonly string[]>();
+    for (const [id, voters] of votes) map.set(id, voters);
+    return map;
+  }, [votes]);
 
   const votedCandidateIds = useMemo(() => {
     const set = new Set<string>();
@@ -124,6 +128,41 @@ export function SessionUI({ code }: { code: string }) {
     if (c.get("phase") !== "voting") return;
     c.set("threshold", rule);
   }, []);
+
+  const lockConsensus = useMutation(
+    (
+      { storage },
+      payload: { winnerId: string; tiedIds: string[] },
+    ) => {
+      const c = storage.get("consensus");
+      // Idempotent: only the first detector locks.
+      if (c.get("phase") !== "voting") return;
+      if (c.get("winnerId") !== null) return;
+      c.update({
+        phase: "decided",
+        winnerId: payload.winnerId,
+        tiedIds: payload.tiedIds,
+        decidedAt: Date.now(),
+      });
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (consensus.phase !== "voting") return;
+    const result = evaluate(votesSnapshot, consensus.threshold as ThresholdRule, presentMemberIds);
+    if (result.winnerId === null) return;
+    lockConsensus({
+      winnerId: result.winnerId,
+      tiedIds: result.tiedIds,
+    });
+  }, [
+    consensus.phase,
+    consensus.threshold,
+    votesSnapshot,
+    presentMemberIds,
+    lockConsensus,
+  ]);
 
   return (
     <main className="min-h-screen bg-bg p-6 text-text">
