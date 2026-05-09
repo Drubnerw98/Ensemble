@@ -128,13 +128,13 @@ These are drub's principles, demonstrated working in Resonance and now applied t
 - **Real-time**: Liveblocks (managed sync, free tier)
 - **Resonance integration**: bearer token via Clerk session (same pattern as Constellation)
 - **Hosting**: Vercel SPA, no new backend service for MVP
-- **Styling**: TBD — likely Tailwind v4 (matches the other two), but lock in `decisions.md` when set up
+- **Styling**: Tailwind v4 (set up at scaffold, matches the other two). Not yet logged in `decisions.md`; still owed.
 
 ## Current state
 
-**Phase**: Initialization. Repo created, decisions logged, no code shipped.
+**Phase**: Sync layer wired. Sessions can be created and joined via Liveblocks rooms with server-side token auth (Vercel function plus Clerk verification). Candidate flow and voting/presence are next.
 
-**Architectural decisions locked** (see `decisions.md`):
+**Architectural decisions locked** (see `decisions.md` for the full reasoning):
 
 1. Project name: Ensemble
 2. Sync engine: Liveblocks
@@ -143,18 +143,21 @@ These are drub's principles, demonstrated working in Resonance and now applied t
 5. Session sharing: opaque link + 6-character room code
 6. Resonance read access: bearer-token pattern
 7. Hosting: Vercel SPA + Liveblocks managed
+8. Liveblocks auth: token-mint via Vercel serverless function
+9. Session ID strategy: room code IS the Liveblocks room ID (ephemeral, no mapping layer)
+10. Candidate source: manual title-only for first cut
 
-**Next step**: Vite + Clerk auth scaffolding, fetch own profile from Resonance.
+**Next step**: Voting + presence (build step 5). Per-user vote events, who's online indicators, who's voted indicators.
 
 ## Build steps (rough order, not strict)
 
 Drub said no week-by-week — here are the discrete steps. Adjust as we learn.
 
-1. **Initialize**: ✅ repo, CLAUDE.md, decisions.md done. Next: `pnpm create vite`, set up TS + ESLint + Prettier matching Constellation's pattern.
-2. **Auth + Resonance read**: Clerk scaffolding, sign in, fetch own profile from Resonance via bearer token.
-3. **Session shell, single-user**: create / join a session by URL or code, see a (manual-add) candidate list.
-4. **Wire Liveblocks**: two browsers in the same session see live state updates (presence, shared list).
-5. **Voting + presence**: per-user vote events, who's online + who's voted indicators.
+1. **Initialize**: ✅ repo, CLAUDE.md, decisions.md, Vite + React 19 + TS + Tailwind v4 + ESLint + Prettier scaffolded.
+2. **Auth + Resonance read**: ✅ Clerk scaffolding, sign in, fetch own profile from Resonance via bearer token (commit `e91b744`).
+3. **Session shell, single-user**: ✅ create / join a session by URL or code (commit `efb8f71`). Manual candidate list still pending.
+4. **Wire Liveblocks**: ✅ rooms, token auth, session create/join wired. Verify presence and shared-list updates in two browsers if not already confirmed.
+5. **Voting + presence**: ← here. Per-user vote events, who's online + who's voted indicators.
 6. **Consensus flow**: threshold logic, "tonight's pick" surfaces.
 7. **Mobile breakpoints + polish**: responsive layout, empty states, edge cases.
 8. **Deploy + real-user test**: ship to Vercel, run it with a friend.
@@ -170,7 +173,7 @@ Drub said no week-by-week — here are the discrete steps. Adjust as we learn.
 
 ## Conventions to lock when scaffolding
 
-These are TBD until the repo is initialized — log decisions to `decisions.md` as they're locked.
+Status: directory layout and Tailwind v4 styling are set up at scaffold but not yet logged in `decisions.md`. Tests, CI, commit conventions still TBD. Log to `decisions.md` as each is locked.
 
 - Directory layout (`src/components/`, `src/routes/`, `src/lib/`, etc.)
 - Styling system (Tailwind config, font stack, color tokens)
