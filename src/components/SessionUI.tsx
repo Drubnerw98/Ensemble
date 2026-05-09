@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+// useEffect imported here for Task 7 (transition detection)
+import { /* useEffect, */ useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { UserButton, useUser } from "@clerk/clerk-react";
 import {
@@ -8,8 +9,12 @@ import {
   useStorage,
 } from "@liveblocks/react/suspense";
 import { LiveList, LiveObject } from "@liveblocks/client";
-import type { Candidate } from "../lib/liveblocks";
+import type { Candidate, ThresholdRule } from "../lib/liveblocks";
+// evaluate imported for Task 7 (consensus transition detection)
+// import { evaluate } from "../lib/consensus";
 import { AvatarStack, Button, Card } from "./ui";
+import { HeroCard } from "./HeroCard";
+import { ThresholdPicker } from "./ThresholdPicker";
 
 type UserInfo = { name?: string; avatarUrl?: string };
 
@@ -18,6 +23,7 @@ const EMPTY_VOTER_LIST: readonly string[] = [];
 export function SessionUI({ code }: { code: string }) {
   const candidates = useStorage((root) => root.candidates);
   const votes = useStorage((root) => root.votes);
+  const consensus = useStorage((root) => root.consensus);
   const others = useOthers();
   const self = useSelf();
   const { user } = useUser();
@@ -41,6 +47,15 @@ export function SessionUI({ code }: { code: string }) {
     }
     return map;
   }, [self.id, self.info, others]);
+
+  const presentMemberIds = useMemo(() => {
+    const set = new Set<string>();
+    if (self.id) set.add(self.id);
+    for (const other of others) if (other.id) set.add(other.id);
+    return set;
+  }, [self.id, others]);
+
+  const isHost = self.id === consensus.hostId;
 
   const votedCandidateIds = useMemo(() => {
     const set = new Set<string>();
@@ -104,6 +119,12 @@ export function SessionUI({ code }: { code: string }) {
     }
   }, []);
 
+  const setThreshold = useMutation(({ storage }, rule: ThresholdRule) => {
+    const c = storage.get("consensus");
+    if (c.get("phase") !== "voting") return;
+    c.set("threshold", rule);
+  }, []);
+
   return (
     <main className="min-h-screen bg-bg p-6 text-text">
       <header className="mx-auto flex max-w-3xl items-center justify-between">
@@ -121,6 +142,28 @@ export function SessionUI({ code }: { code: string }) {
 
       <section className="mx-auto mt-12 max-w-3xl space-y-8">
         <RoomCodeCard code={code} />
+
+        <ThresholdPicker
+          threshold={consensus.threshold}
+          isHost={isHost}
+          presentCount={presentMemberIds.size}
+          onChange={setThreshold}
+        />
+
+        {consensus.phase === "decided" && consensus.winnerId ? (
+          <HeroCard
+            winnerTitle={
+              candidates.find((c) => c.id === consensus.winnerId)?.title ??
+              "(removed)"
+            }
+            voterIds={votes.get(consensus.winnerId) ?? EMPTY_VOTER_LIST}
+            userInfoById={userInfoById}
+            isHost={isHost}
+            onReconsider={() => {
+              /* wired in Task 8 */
+            }}
+          />
+        ) : null}
 
         <Card>
           <Card.Eyebrow count={1 + others.length}>In the room</Card.Eyebrow>
