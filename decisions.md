@@ -143,3 +143,17 @@ The `Why` line in each entry is what an interviewer will hear from drub when ask
 **Tradeoff accepted**: The first deployable version is functionally lo-fi — typing titles by hand isn't the long-term experience. Acceptable because real-user testing requires the sync layer working first, and we can layer the Resonance integration on top once that foundation is verified.
 
 **Would revisit if**: Never — this is explicitly first-cut. The next checkpoint already has "pull from Resonance recs" planned.
+
+---
+
+## 2026-05-09 — Test runner: Vitest with happy-dom + React Testing Library
+
+**Considered**: **Vitest + happy-dom + RTL**, **Vitest + jsdom**, **Jest + jsdom**, **no tests for MVP**.
+
+**Decision**: Vitest with happy-dom and React Testing Library.
+
+**Why**: Vitest is Vite-native, so the test runner shares config and transforms with the dev server — no second toolchain to keep in sync. happy-dom is faster than jsdom and covers everything component-level tests need. RTL is the standard React testing surface, so the patterns I write here are the same patterns I'd write at any React shop. The cost of "no tests for MVP" is shipping primitives that have no regression net for the cross-site visual audit, and that audit is the whole point of building a token-driven system.
+
+**Tradeoff accepted**: happy-dom occasionally diverges from real-browser behavior on edge cases (Shadow DOM, some CSS APIs that aren't fully implemented). For unit tests on UI primitives this hasn't bitten me, but it would for anything visual-regression or layout-dependent.
+
+**Would revisit if**: We adopt Storybook (Storybook + Playwright component tests would replace happy-dom for primitives), need real visual regression testing, or component logic grows past what unit tests can cover.

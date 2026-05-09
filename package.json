@@ -12,7 +12,10 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --check .",
     "format:write": "prettier --write .",
-    "check": "pnpm typecheck && pnpm lint && pnpm build"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:ui": "vitest --ui",
+    "check": "pnpm typecheck && pnpm lint && pnpm build && pnpm test"
   },
   "dependencies": {
     "@clerk/backend": "^1.27.0",
@@ -29,11 +32,15 @@
   "devDependencies": {
     "@eslint/js": "^9.39.4",
     "@tailwindcss/postcss": "^4.0.0",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/node": "^22.10.0",
     "@types/react": "^19.0.2",
     "@types/react-dom": "^19.0.2",
     "@vercel/node": "^5.1.0",
     "@vitejs/plugin-react-swc": "^3.7.2",
+    "@vitest/ui": "^4.1.5",
     "autoprefixer": "^10.4.20",
     "eslint": "^9.39.4",
     "eslint-config-prettier": "^10.1.8",
@@ -41,13 +48,15 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.6.0",
+    "happy-dom": "^20.9.0",
     "postcss": "^8.4.49",
     "prettier": "^3.8.3",
     "prettier-plugin-tailwindcss": "^0.8.0",
     "tailwindcss": "^4.0.0",
     "typescript": "^5.6.3",
     "typescript-eslint": "^8.59.1",
-    "vite": "^6.0.7"
+    "vite": "^6.0.7",
+    "vitest": "^4.1.5"
   },
   "packageManager": "pnpm@10.13.1+sha512.37ebf1a5c7a30d5fabe0c5df44ee8da4c965ca0c5af3dbab28c3a1681b70a256218d05c81c9c0dcf767ef6b8551eb5b960042b9ed4300c59242336377e01cfad"
 }
