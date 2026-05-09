@@ -150,11 +150,12 @@ type AvatarStackProps = {
 - `size='md'` is 28px (used on candidate rows after the hero polish).
 - `highlight` adds `ring-2 ring-accent/50 ring-offset-2 ring-offset-bg` to the stack wrapper.
 
-Used twice: voter stack on candidate rows (with `highlight` when the user has voted), presence/in-the-room area (no highlight, smaller).
+Used in candidate rows only (with `highlight` when the user has voted). The in-the-room presence area keeps its existing chip-list shape with `MemberChip` (avatar + name) because its job is identity confirmation, not convergence celebration. Two different jobs, two different shapes; AvatarStack would lose the names that make the chip list legible at a glance.
 
 ### What is **not** a primitive
 
 - **Inputs.** The two existing inputs (join code centered uppercase, candidate title left-aligned) are different shapes. One reuse is not an abstraction.
+- **MemberChip (in-the-room presence pill).** Lives inline in `SessionUI.tsx` as it does today. One use, simple shape.
 - **Avatar (single).** Used inside `AvatarStack` and inside `MemberChip` only. Two uses, simple shape, stays inline. Extract on third use.
 - **Tooltips, dialogs, dropdowns.** None exist. Build when the third use shows up.
 

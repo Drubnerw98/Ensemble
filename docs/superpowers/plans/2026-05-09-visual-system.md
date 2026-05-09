@@ -1253,13 +1253,6 @@ export function SessionUI({ code }: { code: string }) {
     return set;
   }, [votes, self.id]);
 
-  const presenceUserIds = useMemo(() => {
-    const ids: string[] = [];
-    if (self.id) ids.push(self.id);
-    for (const other of others) if (other.id) ids.push(other.id);
-    return ids;
-  }, [self.id, others]);
-
   const addCandidate = useMutation(
     ({ storage }, title: string) => {
       storage.get("candidates").push(
@@ -1330,15 +1323,23 @@ export function SessionUI({ code }: { code: string }) {
         <RoomCodeCard code={code} />
 
         <Card>
-          <Card.Eyebrow count={presenceUserIds.length}>In the room</Card.Eyebrow>
+          <Card.Eyebrow count={1 + others.length}>In the room</Card.Eyebrow>
           <Card.Body>
-            <AvatarStack
-              userIds={presenceUserIds}
-              userInfoById={userInfoById}
-              size="sm"
-              max={6}
-              showCount={false}
-            />
+            <ul className="flex flex-wrap gap-2">
+              <MemberChip
+                key={self.connectionId}
+                name={self.info?.name}
+                avatarUrl={self.info?.avatarUrl}
+                isYou
+              />
+              {others.map((m) => (
+                <MemberChip
+                  key={m.connectionId}
+                  name={m.info?.name}
+                  avatarUrl={m.info?.avatarUrl}
+                />
+              ))}
+            </ul>
           </Card.Body>
         </Card>
 
@@ -1466,6 +1467,35 @@ function CandidatesPanel({
   );
 }
 
+function MemberChip({
+  name,
+  avatarUrl,
+  isYou,
+}: {
+  name?: string;
+  avatarUrl?: string;
+  isYou?: boolean;
+}) {
+  return (
+    <li className="flex items-center gap-2 rounded-full border border-border px-3 py-1 text-xs text-text">
+      {avatarUrl ? (
+        <img
+          src={avatarUrl}
+          alt=""
+          referrerPolicy="no-referrer"
+          className="h-5 w-5 rounded-full"
+        />
+      ) : (
+        <span className="inline-block h-5 w-5 rounded-full bg-white/10" />
+      )}
+      <span>
+        {name ?? "Anonymous"}
+        {isYou && <span className="ml-1 text-text-muted">(you)</span>}
+      </span>
+    </li>
+  );
+}
+
 function CandidateRow({
   candidate,
   voterIds,
@@ -1516,7 +1546,7 @@ function CandidateRow({
 Notes on what changed beyond the migration:
 
 - `RoomCodeCard` and `CandidatesPanel` now use `Card` and `Card.Eyebrow`. The "Copy code" / "Copy link" buttons become `Button size="sm"` (secondary).
-- The "in the room" section is now a `Card` with an `AvatarStack` instead of the chip list. This is part of the hero direction (faces over chips).
+- The "in the room" section becomes a `Card` wrapping the existing chip list. `MemberChip` stays inline because identity (avatar + name) is its job, not convergence celebration. Border swaps from `border-white/10` to `border-border` to use the system token.
 - `CandidateRow` uses `AvatarStack size="md"` with `highlight={voted}`. The "you voted" ring fires here.
 - The "Vote" / "Voted" toggle uses Button's `primary` variant when voted (saffron), `secondary` when not. This is a brand-touch saffron use the spec endorses.
 - The "remove" link becomes a ghost Button.
@@ -1548,7 +1578,7 @@ Open the app in two browsers (or one normal + one private window) signed in as d
 
 Verify:
 
-- Both users appear in the "In the room" `AvatarStack`.
+- Both users appear in the "In the room" chip list with names visible.
 - Adding a candidate in A appears in B.
 - Voting in B: face appears in the candidate's `AvatarStack` with a spring entrance animation. Stack on the voted candidate gains a saffron ring on B's screen. The "Vote" button on the voted row goes from secondary to primary (saffron) on B's screen.
 - A sees B's vote arrive: B's avatar springs into the stack with the same animation. A's "Vote" button on that row stays secondary (A has not voted yet).
@@ -1566,7 +1596,7 @@ git add src/components/SessionUI.tsx
 git commit -m "$(cat <<'EOF'
 Migrate SessionUI to ui primitives + apply voter convergence hero
 
-Card + AvatarStack + Button replace inline duplications. CandidateRow voter stack goes from size sm (20px) to md (28px) with a saffron ring when the user has voted. New "in the room" card uses AvatarStack instead of chip list to put faces front and center. Vote button uses primary (saffron) when voted, secondary when not, completing the brand-touch saffron path.
+Card + AvatarStack + Button replace inline duplications. CandidateRow voter stack goes from size sm (20px) to md (28px) with a saffron ring when the user has voted. In-the-room presence keeps its chip list (identity, not convergence). Vote button uses primary (saffron) when voted, secondary when not, completing the brand-touch saffron path.
 
 Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>
 EOF
