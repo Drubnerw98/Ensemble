@@ -1,4 +1,4 @@
-import type { LiveList, LiveMap, LiveObject } from "@liveblocks/client";
+import type { LiveList, LiveMap, LiveObject, Lson } from "@liveblocks/client";
 
 // Index signature satisfies Liveblocks' LsonObject constraint — values
 // stored in Liveblocks Storage must be primitives, Live* nodes, or plain
@@ -25,6 +25,9 @@ export type Consensus = {
   winnerId: string | null;
   tiedIds: string[];
   decidedAt: number | null;
+  // Wider index signature than Candidate's — Consensus holds nested
+  // objects (threshold), arrays (tiedIds), and nullable primitives.
+  [key: string]: Lson | undefined;
 };
 
 // Module augmentation tells Liveblocks' hooks (useStorage, useSelf, etc.)
