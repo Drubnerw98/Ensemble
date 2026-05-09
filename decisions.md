@@ -157,3 +157,17 @@ The `Why` line in each entry is what an interviewer will hear from drub when ask
 **Tradeoff accepted**: happy-dom occasionally diverges from real-browser behavior on edge cases (Shadow DOM, some CSS APIs that aren't fully implemented). For unit tests on UI primitives this hasn't bitten me, but it would for anything visual-regression or layout-dependent.
 
 **Would revisit if**: We adopt Storybook (Storybook + Playwright component tests would replace happy-dom for primitives), need real visual regression testing, or component logic grows past what unit tests can cover.
+
+---
+
+## 2026-05-09 — Visual system: token-driven, saffron + terracotta on dark
+
+**Considered**: **Lean polish** (refine existing inline Tailwind in place, no system), **system in components only** (visual decisions baked into components, no shared tokens), **token-driven system** (tokens in Tailwind v4 `@theme`, four primitives consume them).
+
+**Decision**: Token-driven system in Tailwind v4 `@theme` plus four primitives (Button, Card, Eyebrow, AvatarStack) in `src/components/ui/`. IBM Plex Sans + Plex Mono. Saffron (`#E8A857`) for brand / social / consensus, terracotta (`#DB7B47`) for warnings. One Framer Motion spring on AvatarStack vote-lands.
+
+**Why**: Tokens in one file are extractable; the cross-site audit (Resonance + Constellation + Ensemble at roughly 95% complete) needs a system to harmonize against, not a pile of styled components. Plex Sans + Plex Mono are designed as a paired family, which makes the eyebrow-mono / body-sans relationship intentional rather than coincidental — Inter would have been the safer pick but reads cold against the social direction; Geist was right for the eyebrows but reads as Vercel-coded. Saffron and terracotta as two warm hues rather than one shared amber prevents "consensus reached" and "couldn't load profile" from looking the same. The single Framer Motion spring on the vote-lands moment is the senior-restraint move: if everything springs, nothing does.
+
+**Tradeoff accepted**: One more font import, two more color tokens, and a runtime motion library compared to "polish in place." Worth it for the durable system artifact, which is the whole point of doing this before consensus flow ships and the UI surface area doubles.
+
+**Would revisit if**: We add a light theme (would need a parallel set of tokens), the cross-site audit picks a different shared palette or font pairing, or Framer Motion gets superseded by a smaller alternative we adopt elsewhere in the ecosystem.

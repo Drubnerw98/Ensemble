@@ -132,7 +132,7 @@ These are drub's principles, demonstrated working in Resonance and now applied t
 
 ## Current state
 
-**Phase**: Sync layer wired. Sessions can be created and joined via Liveblocks rooms with server-side token auth (Vercel function plus Clerk verification). Candidate flow and voting/presence are next.
+**Phase**: Voting and visual system shipped. Approval voting with attributed avatars, hardened Liveblocks auth (origin allowlist + per-IP/user rate limit), and a token-driven visual system (saffron + terracotta on dark, IBM Plex pair, four UI primitives, voter-convergence hero). Next: consensus flow.
 
 **Architectural decisions locked** (see `decisions.md` for the full reasoning):
 
@@ -146,8 +146,10 @@ These are drub's principles, demonstrated working in Resonance and now applied t
 8. Liveblocks auth: token-mint via Vercel serverless function
 9. Session ID strategy: room code IS the Liveblocks room ID (ephemeral, no mapping layer)
 10. Candidate source: manual title-only for first cut
+11. Test runner: Vitest + happy-dom + React Testing Library
+12. Visual system: token-driven (saffron + terracotta, IBM Plex pair, six-step type scale). Spec at `docs/superpowers/specs/2026-05-09-visual-system-design.md`.
 
-**Next step**: Voting + presence (build step 5). Per-user vote events, who's online indicators, who's voted indicators.
+**Next step**: Consensus flow (build step 6). Threshold logic, "tonight's pick" surfaces, tie handling, late-voter behavior.
 
 ## Build steps (rough order, not strict)
 
@@ -157,10 +159,11 @@ Drub said no week-by-week — here are the discrete steps. Adjust as we learn.
 2. **Auth + Resonance read**: ✅ Clerk scaffolding, sign in, fetch own profile from Resonance via bearer token (commit `e91b744`).
 3. **Session shell, single-user**: ✅ create / join a session by URL or code (commit `efb8f71`). Manual candidate list still pending.
 4. **Wire Liveblocks**: ✅ rooms, token auth, session create/join wired. Verify presence and shared-list updates in two browsers if not already confirmed.
-5. **Voting + presence**: ← here. Per-user vote events, who's online + who's voted indicators.
-6. **Consensus flow**: threshold logic, "tonight's pick" surfaces.
-7. **Mobile breakpoints + polish**: responsive layout, empty states, edge cases.
-8. **Deploy + real-user test**: ship to Vercel, run it with a friend.
+5. **Voting + presence**: ✅ approval voting with attributed avatars (commit `530f5cf`), Liveblocks-auth hardened (commit `8b25bb9`).
+6. **Visual system pass**: ✅ tokens, four primitives, voter-convergence hero. Spec at `docs/superpowers/specs/2026-05-09-visual-system-design.md`.
+7. **Consensus flow**: ← here. Threshold logic, "tonight's pick" surfaces, tie handling, late-voter behavior.
+8. **Mobile breakpoints + polish**: responsive layout, empty states, edge cases.
+9. **Deploy + real-user test**: ship to Vercel, run it with a friend.
 
 ## External dependencies
 
@@ -173,13 +176,13 @@ Drub said no week-by-week — here are the discrete steps. Adjust as we learn.
 
 ## Conventions to lock when scaffolding
 
-Status: directory layout and Tailwind v4 styling are set up at scaffold but not yet logged in `decisions.md`. Tests, CI, commit conventions still TBD. Log to `decisions.md` as each is locked.
+Status: directory layout, Tailwind v4 styling, and test runner are set up. Tailwind tokens and tests are now logged in `decisions.md`. Directory layout, CI, and commit conventions still TBD. Log to `decisions.md` as each is locked.
 
 - Directory layout (`src/components/`, `src/routes/`, `src/lib/`, etc.)
-- Styling system (Tailwind config, font stack, color tokens)
-- Test setup (Vitest? happy-dom?)
+- Styling system (✅ tokens locked in `decisions.md` and `globals.css`)
+- Test setup (✅ Vitest + happy-dom + React Testing Library, logged in `decisions.md`)
 - CI workflow (GitHub Actions matching Constellation's `check.yml` pattern)
-- Commit prefix conventions (or none — match drub's existing repos)
+- Commit prefix conventions (or none, match drub's existing repos)
 
 ## A note on the decisions log
 
