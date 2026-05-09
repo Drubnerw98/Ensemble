@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { UserButton, useUser } from "@clerk/clerk-react";
 import {
@@ -55,26 +55,33 @@ export function SessionUI({ code }: { code: string }) {
 
   const isHost = self.id === consensus.hostId;
 
-  const prevPhaseRef = useRef<ConsensusPhase | null>(null);
+  // Track both the previous phase and whether this client observed the
+  // voting->decided transition. Both are stored as state so we avoid reading
+  // or writing refs during render (react-hooks/refs) and avoid synchronous
+  // setState in effects (react-hooks/set-state-in-effect).
+  //
+  // The React docs' recommended pattern for "previous value" tracking is to
+  // call setState during render when the relevant prop changes. React will
+  // discard the current render output and immediately re-render with the new
+  // state, making it effectively synchronous for the user.
+  //
+  // prevPhase starts null: a late joiner whose first render sees
+  // phase === "decided" gets observedTransition === false (no animation gate),
+  // which is the spec's late-joiner requirement.
+  const [prevPhase, setPrevPhase] = useState<ConsensusPhase | null>(null);
   const [observedTransition, setObservedTransition] = useState(false);
 
-  // prevPhaseRef starts null on mount: a late joiner whose first render shows
-  // phase === "decided" lands in observedTransition === false (no animation),
-  // which is the spec's late-joiner gate.
-  useEffect(() => {
-    if (
-      prevPhaseRef.current === "voting" &&
-      consensus.phase === "decided"
-    ) {
+  if (prevPhase !== consensus.phase) {
+    // Phase changed: update prevPhase and adjust observedTransition in the
+    // same aborted-render pass so the next committed render has both correct.
+    setPrevPhase(consensus.phase);
+    if (prevPhase === "voting" && consensus.phase === "decided") {
       setObservedTransition(true);
-    }
-    if (consensus.phase === "voting") {
-      // Reconsider returned the room to voting — clear so the next
-      // decision can re-arm the animation gate cleanly.
+    } else if (consensus.phase === "voting") {
+      // Reconsider returned to voting: clear the gate for the next round.
       setObservedTransition(false);
     }
-    prevPhaseRef.current = consensus.phase;
-  }, [consensus.phase]);
+  }
 
   const votesSnapshot = useMemo(() => {
     const map = new Map<string, readonly string[]>();

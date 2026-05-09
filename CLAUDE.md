@@ -132,7 +132,7 @@ These are drub's principles, demonstrated working in Resonance and now applied t
 
 ## Current state
 
-**Phase**: Voting and visual system shipped. Approval voting with attributed avatars, hardened Liveblocks auth (origin allowlist + per-IP/user rate limit), and a token-driven visual system (saffron + terracotta on dark, IBM Plex pair, four UI primitives, voter-convergence hero). Next: consensus flow.
+**Phase**: Consensus flow shipped. Configurable threshold (unanimous, majority, first-to-N), random tiebreaker with spin animation, lock + reconsider lifecycle, room-creator host with migration. Visual system and approval voting still live underneath.
 
 **Architectural decisions locked** (see `decisions.md` for the full reasoning):
 
@@ -148,8 +148,13 @@ These are drub's principles, demonstrated working in Resonance and now applied t
 10. Candidate source: manual title-only for first cut
 11. Test runner: Vitest + happy-dom + React Testing Library
 12. Visual system: token-driven (saffron + terracotta, IBM Plex pair, six-step type scale). Spec at `docs/superpowers/specs/2026-05-09-visual-system-design.md`.
+13. Consensus state model: storage-stored, CRDT-resolved.
+14. Threshold function: configurable per session (unanimous, majority, first-to-N).
+15. Tie handling: random pick with spin reveal.
+16. Lifecycle: lock + reconsider, votes cleared on reconsider.
+17. Authority: room creator is host, migrates to lowest-connectionId member on drop.
 
-**Next step**: Consensus flow (build step 6). Threshold logic, "tonight's pick" surfaces, tie handling, late-voter behavior.
+**Next step**: Mobile breakpoints and polish (build step 8). Responsive layout, empty states, edge cases.
 
 ## Build steps (rough order, not strict)
 
@@ -161,8 +166,8 @@ Drub said no week-by-week — here are the discrete steps. Adjust as we learn.
 4. **Wire Liveblocks**: ✅ rooms, token auth, session create/join wired. Verify presence and shared-list updates in two browsers if not already confirmed.
 5. **Voting + presence**: ✅ approval voting with attributed avatars (commit `530f5cf`), Liveblocks-auth hardened (commit `8b25bb9`).
 6. **Visual system pass**: ✅ tokens, four primitives, voter-convergence hero. Spec at `docs/superpowers/specs/2026-05-09-visual-system-design.md`.
-7. **Consensus flow**: ← here. Threshold logic, "tonight's pick" surfaces, tie handling, late-voter behavior.
-8. **Mobile breakpoints + polish**: responsive layout, empty states, edge cases.
+7. **Consensus flow**: ✅ configurable threshold, random tiebreaker, lock + reconsider, hero card reveal.
+8. **Mobile breakpoints + polish**: ← here. Responsive layout, empty states, edge cases.
 9. **Deploy + real-user test**: ship to Vercel, run it with a friend.
 
 ## External dependencies

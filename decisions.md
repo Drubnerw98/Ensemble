@@ -171,3 +171,73 @@ The `Why` line in each entry is what an interviewer will hear from drub when ask
 **Tradeoff accepted**: One more font import, two more color tokens, and a runtime motion library compared to "polish in place." Worth it for the durable system artifact, which is the whole point of doing this before consensus flow ships and the UI surface area doubles.
 
 **Would revisit if**: We add a light theme (would need a parallel set of tokens), the cross-site audit picks a different shared palette or font pairing, or Framer Motion gets superseded by a smaller alternative we adopt elsewhere in the ecosystem.
+
+---
+
+## 2026-05-09 — Consensus state model: storage-stored, CRDT-resolved
+
+**Considered**: **Storage-stored** (a `consensus: LiveObject<...>` node in Liveblocks Storage; first client to detect threshold-cross writes the transition), **derived** (compute consensus state every render with no `phase` field), **server-authoritative** (Vercel function `/api/decide` runs the random pick and writes back via REST).
+
+**Decision**: Storage-stored, CRDT-resolved.
+
+**Why**: Two of the three options were ruled out by load-bearing requirements. Derived state breaks down on the random tiebreaker: each client running its own `Math.random()` would pick a different tied winner, and the convergence requires a single source of truth. A deterministic seed would kill the "chance picked" narrative. Server-authoritative adds a network round-trip to a moment that should feel instant, and the auth-function precedent doesn't extend (there's no security reason to centralize deciding). Storage-stored leverages Liveblocks' CRDT semantics that already power voting: simultaneous threshold-detections by multiple clients converge to a single committed state via last-writer-wins on the LiveObject.
+
+**Tradeoff accepted**: The random tiebreaker is nondeterministic across replays. Acceptable because (a) the nondeterminism is the desired UX ("chance decided") and (b) ephemeral sessions mean there is no replay scenario where the difference would surface.
+
+**Would revisit if**: Persistence comes back (per the persistence "Would revisit if") and replay determinism becomes load-bearing for analytics or audit. At that point a server-side decider with a stored seed becomes the natural answer.
+
+---
+
+## 2026-05-09 — Threshold function: configurable per session
+
+**Considered**: **Unanimous-only** (every present member must vote), **majority-only** (>50% of present), **first-to-N-only** (host-set target), **configurable per session** (host picks one of the three at session start).
+
+**Decision**: Configurable per session.
+
+**Why**: Real groups disagree about what "consensus" means. Couples watching a movie want unanimous; a friend group of six picking takeout doesn't want one holdout to deadlock dinner; a 4-watching-3-deciding scenario wants first-to-N. Hard-coding any one rule mismatches a meaningful share of sessions and would force users to work around the product. The cost is a small UI surface (a select and an N input for first-to-n) and a discriminated-union type, both well within the existing token system and tooling.
+
+**Tradeoff accepted**: A small configuration choice for the host at session start. Default of `unanimous` keeps the path of least resistance honest to the product's "we agree" framing.
+
+**Would revisit if**: Real-user observation shows hosts never change the default (default-only would drop the surface) or always immediately switch (the default is wrong).
+
+---
+
+## 2026-05-09 — Tie handling: random pick with spin reveal
+
+**Considered**: **All tied candidates win as a shortlist** (room agrees on a set, decides off-app), **tiebreaker round** (re-vote on the tied set), **random pick** (app rolls a die), **host breaks tie** (creator decides manually).
+
+**Decision**: Random pick from the tied set, with a brief spin animation cycling through the tied candidates before settling on the winner.
+
+**Why**: Approval voting makes ties the common case rather than the exception, so the rule has to be fast and reliably one-shot (it'll fire often). Shortlist pushes the decision back off-app, undoing the entire premise. A runoff round adds a heavier state machine (round 1 vs round 2) for what is supposed to be a friend-group casual experience. Host-as-arbiter elevates the host from "set the rule" to "decide the room's outcome," which changes the social shape of the product (peer-to-peer becomes top-down). Random pick is decisive, fast, and the spin animation makes the moment distinctive. The framing "the room agreed; chance picked" is more interesting than "majority won."
+
+**Tradeoff accepted**: Some users will dislike randomness as a deciding mechanism. Accepted because it preserves the egalitarian feel and makes a memorable UX moment that "majority wins" would not.
+
+**Would revisit if**: User feedback shows the random moment feels unfair or buggy ("the wheel was rigged"), or if tie incidence is much lower than expected (in which case a heavier runoff might be tolerable for the rare case).
+
+---
+
+## 2026-05-09 — Lifecycle: lock + reconsider
+
+**Considered**: **Live tally only** (threshold-crossing is a UI flourish; tally stays live), **terminal lock** (threshold-crossing freezes the room, no un-decide), **lock + reconsider** (threshold-crossing locks; host can press a button to unlock).
+
+**Decision**: Lock + reconsider. Reconsider clears all votes and returns to the voting phase.
+
+**Why**: Live-only weakens the "we decided" beat to nothing: no narrative, no closure, just a banner. Terminal lock has the strongest moment but no recovery path; a single misclick or premature crossing means starting a brand-new session. Lock + reconsider gives the moment real weight (votes pause, hero card slides in, the room recognizes the outcome) while preserving an escape hatch. Clearing all votes on reconsider (rather than just the winner's votes) sidesteps the no-op loop where the same threshold instantly re-crosses; it also matches the natural mental model "let's vote again."
+
+**Tradeoff accepted**: A single host can repeatedly reconsider, which in a hostile group could become a grief vector. Accepted because the intended use case is friend groups (not strangers), and the "Auth scope: Resonance users only" decision already pre-screens for that.
+
+**Would revisit if**: Sessions stretch to larger or less-trusted groups where reconsider needs a quorum, or if real-user testing shows the moment feels too easily undone.
+
+---
+
+## 2026-05-09 — Authority: room creator is host
+
+**Considered**: **Anyone (peer-to-peer)** (any member configures rule and triggers reconsider), **room creator is host** (whoever opened the session has those powers; migrates to longest-connected member if they drop), **anyone configures, majority reconsiders** (asymmetric: open rule-setting, quorum-gated unlock).
+
+**Decision**: Room creator is host. Migration on disconnect is automatic to the lowest-connectionId remaining member.
+
+**Why**: The product is fundamentally peer-to-peer in spirit (voting itself is fully symmetric). But two operations need a single decider: setting the threshold rule and unlocking after consensus. Both are "configure the room" gestures, not "express my preference" gestures, so attaching them to a single role is natural. Creator-is-host has the cleanest mental model ("the person who started this is steering") and avoids an explicit role-assignment flow. Migration to lowest connectionId in the present set uses Liveblocks' unique per-connection ids, so all clients pick the same successor without coordination.
+
+**Tradeoff accepted**: A host who drops loses their role even if they intended to come back. Accepted because the alternative (preserving host across disconnects) would require persistence and explicit reclaim flows, neither of which fit MVP scope.
+
+**Would revisit if**: We add explicit host-transfer UX (give the role to X), or if drub's friend-group testing shows host migration on disconnect feels disorienting.

@@ -30,10 +30,14 @@ export function HeroCard({
 
   useEffect(() => {
     if (!shouldSpin) {
-      setSettled(true);
+      // shouldSpin is false: no timer needed. settled was initialized from
+      // !shouldSpin so it's already true on first render; the only case where
+      // we'd need to correct it is a prop change making shouldSpin go false
+      // after being true, but that can't happen (animateOnMount is a const
+      // passed at mount and spinningTitles only grows). Rely on cleanup.
       return;
     }
-    setSettled(false);
+    // shouldSpin is true: run the spin then settle.
     const tick = window.setInterval(() => {
       setTickIndex((i) => i + 1);
     }, SPIN_TICK_MS);
@@ -44,6 +48,9 @@ export function HeroCard({
     return () => {
       window.clearInterval(tick);
       window.clearTimeout(settle);
+      // Reset for a future re-arm (e.g., if spinningTitles changes while
+      // in-flight). setSettled is safe inside cleanup per the lint rule.
+      setSettled(false);
     };
   }, [shouldSpin, spinningTitles]);
 
