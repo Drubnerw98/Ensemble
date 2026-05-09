@@ -202,9 +202,7 @@ export function SessionUI({ code }: { code: string }) {
     if (!self.id) return;
     const hostId = consensus.hostId;
     const present: { id: string; connectionId: number }[] = [];
-    if (self.id) {
-      present.push({ id: self.id, connectionId: self.connectionId });
-    }
+    present.push({ id: self.id, connectionId: self.connectionId });
     for (const o of others) {
       if (o.id) present.push({ id: o.id, connectionId: o.connectionId });
     }
@@ -213,9 +211,11 @@ export function SessionUI({ code }: { code: string }) {
     const hostStillPresent = present.some((p) => p.id === hostId);
     if (hostStillPresent) return;
 
-    // Lowest connectionId = longest-connected = deterministic across
-    // clients. Whoever fits the rule writes the migration; CRDT picks
-    // one if multiple write at once.
+    // Pick the lowest connectionId in the present set. Liveblocks assigns
+    // unique connectionIds per active connection in a room, so every client
+    // computes the same successor independently. Reconnects assign new ids,
+    // so this is "earliest unbroken connection," not "longest user history."
+    // CRDT resolves the case where multiple clients write at once.
     const successor = present.reduce((min, p) =>
       p.connectionId < min.connectionId ? p : min,
     );
