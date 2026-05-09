@@ -1,15 +1,11 @@
 import { SignInButton } from "@clerk/clerk-react";
+import { Button, Eyebrow } from "../components/ui";
 
-// Placeholder signed-out surface. Visual identity for Ensemble is a
-// dedicated brainstorm — this page exists to gate the auth flow, not to
-// pitch the product.
 export function Landing() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-bg p-6 text-text">
       <div className="max-w-md text-center">
-        <p className="font-display text-[11px] tracking-[0.28em] text-text-muted uppercase">
-          Ensemble
-        </p>
+        <Eyebrow>Ensemble</Eyebrow>
         <h1 className="mt-4 text-3xl font-light tracking-tight">
           Decide together.
         </h1>
@@ -18,12 +14,7 @@ export function Landing() {
         </p>
         <div className="mt-8">
           <SignInButton mode="modal">
-            <button
-              type="button"
-              className="cursor-pointer rounded-md bg-text px-5 py-2 text-sm font-medium text-bg transition-colors hover:opacity-90"
-            >
-              Sign in
-            </button>
+            <Button variant="primary">Sign in</Button>
           </SignInButton>
         </div>
       </div>
