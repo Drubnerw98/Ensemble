@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { UserButton, useUser } from "@clerk/clerk-react";
 import {
@@ -7,15 +7,48 @@ import {
   useSelf,
   useStorage,
 } from "@liveblocks/react/suspense";
-import { LiveObject } from "@liveblocks/client";
+import { LiveList, LiveObject } from "@liveblocks/client";
 import type { Candidate } from "../lib/liveblocks";
+
+type UserInfo = { name?: string; avatarUrl?: string };
+
+const EMPTY_VOTER_LIST: readonly string[] = [];
 
 export function SessionUI({ code }: { code: string }) {
   const candidates = useStorage((root) => root.candidates);
+  const votes = useStorage((root) => root.votes);
   const others = useOthers();
   const self = useSelf();
   const { user } = useUser();
   const navigate = useNavigate();
+
+  const userInfoById = useMemo(() => {
+    const map = new Map<string, UserInfo>();
+    if (self.id) {
+      map.set(self.id, {
+        name: self.info?.name,
+        avatarUrl: self.info?.avatarUrl,
+      });
+    }
+    for (const other of others) {
+      if (other.id) {
+        map.set(other.id, {
+          name: other.info?.name,
+          avatarUrl: other.info?.avatarUrl,
+        });
+      }
+    }
+    return map;
+  }, [self.id, self.info, others]);
+
+  const votedCandidateIds = useMemo(() => {
+    const set = new Set<string>();
+    if (!self.id) return set;
+    for (const [candidateId, voterIds] of votes) {
+      if (voterIds.includes(self.id)) set.add(candidateId);
+    }
+    return set;
+  }, [votes, self.id]);
 
   const addCandidate = useMutation(
     ({ storage }, title: string) => {
@@ -33,8 +66,37 @@ export function SessionUI({ code }: { code: string }) {
 
   const removeCandidate = useMutation(({ storage }, id: string) => {
     const list = storage.get("candidates");
+    const votesMap = storage.get("votes");
     for (let i = list.length - 1; i >= 0; i--) {
       if (list.get(i)?.get("id") === id) {
+        list.delete(i);
+        // Drop the candidate's vote entry too so the map doesn't accumulate
+        // orphan keys over a session's lifetime.
+        votesMap.delete(id);
+        return;
+      }
+    }
+  }, []);
+
+  const castVote = useMutation(({ storage, self }, candidateId: string) => {
+    const votesMap = storage.get("votes");
+    const list = votesMap.get(candidateId);
+    if (!list) {
+      votesMap.set(candidateId, new LiveList([self.id]));
+      return;
+    }
+    for (let i = 0; i < list.length; i++) {
+      if (list.get(i) === self.id) return;
+    }
+    list.push(self.id);
+  }, []);
+
+  const unvote = useMutation(({ storage, self }, candidateId: string) => {
+    const votesMap = storage.get("votes");
+    const list = votesMap.get(candidateId);
+    if (!list) return;
+    for (let i = list.length - 1; i >= 0; i--) {
+      if (list.get(i) === self.id) {
         list.delete(i);
         return;
       }
@@ -82,8 +144,13 @@ export function SessionUI({ code }: { code: string }) {
 
         <CandidatesPanel
           candidates={candidates}
+          votes={votes}
+          userInfoById={userInfoById}
+          votedCandidateIds={votedCandidateIds}
           onAdd={addCandidate}
           onRemove={removeCandidate}
+          onVote={castVote}
+          onUnvote={unvote}
         />
       </section>
     </main>
@@ -161,12 +228,22 @@ function RoomCodeCard({ code }: { code: string }) {
 
 function CandidatesPanel({
   candidates,
+  votes,
+  userInfoById,
+  votedCandidateIds,
   onAdd,
   onRemove,
+  onVote,
+  onUnvote,
 }: {
   candidates: readonly { readonly id: string; readonly title: string }[];
+  votes: ReadonlyMap<string, readonly string[]>;
+  userInfoById: ReadonlyMap<string, UserInfo>;
+  votedCandidateIds: ReadonlySet<string>;
   onAdd: (title: string) => void;
   onRemove: (id: string) => void;
+  onVote: (id: string) => void;
+  onUnvote: (id: string) => void;
 }) {
   const [draft, setDraft] = useState("");
 
@@ -209,22 +286,107 @@ function CandidatesPanel({
       ) : (
         <ul className="mt-4 space-y-2">
           {candidates.map((c) => (
-            <li
+            <CandidateRow
               key={c.id}
-              className="flex items-center justify-between gap-3 rounded-md border border-white/10 bg-white/[0.01] px-3 py-2 text-sm"
-            >
-              <span>{c.title}</span>
-              <button
-                type="button"
-                onClick={() => onRemove(c.id)}
-                className="cursor-pointer text-xs text-text-muted hover:text-amber-200/85"
-              >
-                remove
-              </button>
-            </li>
+              candidate={c}
+              voterIds={votes.get(c.id) ?? EMPTY_VOTER_LIST}
+              userInfoById={userInfoById}
+              voted={votedCandidateIds.has(c.id)}
+              onVote={onVote}
+              onUnvote={onUnvote}
+              onRemove={onRemove}
+            />
           ))}
         </ul>
       )}
+    </div>
+  );
+}
+
+function CandidateRow({
+  candidate,
+  voterIds,
+  userInfoById,
+  voted,
+  onVote,
+  onUnvote,
+  onRemove,
+}: {
+  candidate: { readonly id: string; readonly title: string };
+  voterIds: readonly string[];
+  userInfoById: ReadonlyMap<string, UserInfo>;
+  voted: boolean;
+  onVote: (id: string) => void;
+  onUnvote: (id: string) => void;
+  onRemove: (id: string) => void;
+}) {
+  return (
+    <li className="flex items-center justify-between gap-3 rounded-md border border-white/10 bg-white/[0.01] px-3 py-2 text-sm">
+      <span className="min-w-0 truncate">{candidate.title}</span>
+      <div className="flex shrink-0 items-center gap-3">
+        <VoterStack voterIds={voterIds} userInfoById={userInfoById} />
+        <button
+          type="button"
+          onClick={() =>
+            voted ? onUnvote(candidate.id) : onVote(candidate.id)
+          }
+          className={
+            voted
+              ? "cursor-pointer rounded-md border border-white/30 bg-white/10 px-3 py-1.5 text-xs font-medium text-text transition-colors hover:bg-white/15"
+              : "cursor-pointer rounded-md border border-white/10 px-3 py-1.5 text-xs text-text-muted transition-colors hover:bg-white/5 hover:text-text"
+          }
+        >
+          {voted ? "Voted" : "Vote"}
+        </button>
+        <button
+          type="button"
+          onClick={() => onRemove(candidate.id)}
+          className="cursor-pointer text-xs text-text-muted hover:text-amber-200/85"
+        >
+          remove
+        </button>
+      </div>
+    </li>
+  );
+}
+
+function VoterStack({
+  voterIds,
+  userInfoById,
+}: {
+  voterIds: readonly string[];
+  userInfoById: ReadonlyMap<string, UserInfo>;
+}) {
+  if (voterIds.length === 0) return null;
+
+  // Cap at 3 visible avatars so a popular candidate doesn't blow out the row;
+  // total count is shown to the right regardless.
+  const visible = voterIds.slice(0, 3);
+
+  return (
+    <div className="flex items-center gap-2">
+      <div className="flex">
+        {visible.map((id, i) => {
+          const info = userInfoById.get(id);
+          const stackOffset = i > 0 ? "-ml-1.5" : "";
+          return info?.avatarUrl ? (
+            <img
+              key={id}
+              src={info.avatarUrl}
+              alt=""
+              title={info.name ?? "Voter"}
+              className={`h-5 w-5 shrink-0 rounded-full border border-bg ${stackOffset}`}
+            />
+          ) : (
+            <span
+              key={id}
+              title={info?.name ?? "Voter"}
+              className={`inline-block h-5 w-5 shrink-0 rounded-full border border-bg bg-white/10 ${stackOffset}`}
+            />
+          );
+        })}
+      </div>
+      <span className="text-xs text-text-muted">{voterIds.length}</span>
     </div>
   );
 }
