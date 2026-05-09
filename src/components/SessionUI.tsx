@@ -137,6 +137,9 @@ export function SessionUI({ code }: { code: string }) {
       const c = storage.get("consensus");
       // Idempotent: only the first detector locks.
       if (c.get("phase") !== "voting") return;
+      // Belt-and-suspenders: today the schema writes phase + winnerId in the
+      // same update(), so this is unreachable via normal flow. Defends against
+      // a future change that splits them.
       if (c.get("winnerId") !== null) return;
       c.update({
         phase: "decided",
@@ -150,6 +153,9 @@ export function SessionUI({ code }: { code: string }) {
 
   useEffect(() => {
     if (consensus.phase !== "voting") return;
+    // Liveblocks widens nested LiveObject fields to Lson via the
+    // [key: string]: Lson | undefined index signature on Consensus —
+    // re-narrow to the original ThresholdRule shape.
     const result = evaluate(votesSnapshot, consensus.threshold as ThresholdRule, presentMemberIds);
     if (result.winnerId === null) return;
     lockConsensus({
