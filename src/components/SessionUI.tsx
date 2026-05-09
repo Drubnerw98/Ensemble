@@ -9,6 +9,7 @@ import {
 } from "@liveblocks/react/suspense";
 import { LiveList, LiveObject } from "@liveblocks/client";
 import type { Candidate } from "../lib/liveblocks";
+import { AvatarStack, Button, Card } from "./ui";
 
 type UserInfo = { name?: string; avatarUrl?: string };
 
@@ -121,26 +122,26 @@ export function SessionUI({ code }: { code: string }) {
       <section className="mx-auto mt-12 max-w-3xl space-y-8">
         <RoomCodeCard code={code} />
 
-        <div className="rounded-lg border border-white/10 bg-white/[0.02] p-5">
-          <p className="font-display text-[10px] tracking-[0.22em] text-text-muted uppercase">
-            In the room · {1 + others.length}
-          </p>
-          <ul className="mt-3 flex flex-wrap gap-2">
-            <MemberChip
-              key={self.connectionId}
-              name={self.info?.name}
-              avatarUrl={self.info?.avatarUrl}
-              isYou
-            />
-            {others.map((m) => (
+        <Card>
+          <Card.Eyebrow count={1 + others.length}>In the room</Card.Eyebrow>
+          <Card.Body>
+            <ul className="flex flex-wrap gap-2">
               <MemberChip
-                key={m.connectionId}
-                name={m.info?.name}
-                avatarUrl={m.info?.avatarUrl}
+                key={self.connectionId}
+                name={self.info?.name}
+                avatarUrl={self.info?.avatarUrl}
+                isYou
               />
-            ))}
-          </ul>
-        </div>
+              {others.map((m) => (
+                <MemberChip
+                  key={m.connectionId}
+                  name={m.info?.name}
+                  avatarUrl={m.info?.avatarUrl}
+                />
+              ))}
+            </ul>
+          </Card.Body>
+        </Card>
 
         <CandidatesPanel
           candidates={candidates}
@@ -167,7 +168,7 @@ function MemberChip({
   isYou?: boolean;
 }) {
   return (
-    <li className="flex items-center gap-2 rounded-full border border-white/10 px-3 py-1 text-xs text-text">
+    <li className="flex items-center gap-2 rounded-full border border-border px-3 py-1 text-xs text-text">
       {avatarUrl ? (
         <img
           src={avatarUrl}
@@ -201,33 +202,25 @@ function RoomCodeCard({ code }: { code: string }) {
   }
 
   return (
-    <div className="rounded-lg border border-white/10 bg-white/[0.02] p-5">
-      <p className="font-display text-[10px] tracking-[0.22em] text-text-muted uppercase">
-        Session code
-      </p>
-      <div className="mt-3 flex flex-wrap items-center gap-3">
-        <span
-          aria-label={`Session code ${code}`}
-          className="rounded-md border border-white/10 px-3 py-2 font-mono text-2xl tracking-[0.3em] text-text select-all"
-        >
-          {code}
-        </span>
-        <button
-          type="button"
-          onClick={() => copy(code, "code")}
-          className="cursor-pointer rounded-md border border-white/10 px-3 py-1.5 text-xs text-text-muted transition-colors hover:bg-white/5 hover:text-text"
-        >
-          {copied === "code" ? "Copied" : "Copy code"}
-        </button>
-        <button
-          type="button"
-          onClick={() => copy(url, "link")}
-          className="cursor-pointer rounded-md border border-white/10 px-3 py-1.5 text-xs text-text-muted transition-colors hover:bg-white/5 hover:text-text"
-        >
-          {copied === "link" ? "Copied" : "Copy link"}
-        </button>
-      </div>
-    </div>
+    <Card>
+      <Card.Eyebrow>Session code</Card.Eyebrow>
+      <Card.Body>
+        <div className="flex flex-wrap items-center gap-3">
+          <span
+            aria-label={`Session code ${code}`}
+            className="rounded-md border border-border px-3 py-2 font-mono text-2xl tracking-[0.3em] text-text select-all"
+          >
+            {code}
+          </span>
+          <Button size="sm" onClick={() => copy(code, "code")}>
+            {copied === "code" ? "Copied" : "Copy code"}
+          </Button>
+          <Button size="sm" onClick={() => copy(url, "link")}>
+            {copied === "link" ? "Copied" : "Copy link"}
+          </Button>
+        </div>
+      </Card.Body>
+    </Card>
   );
 }
 
@@ -261,50 +254,45 @@ function CandidatesPanel({
   }
 
   return (
-    <div className="rounded-lg border border-white/10 bg-white/[0.02] p-5">
-      <p className="font-display text-[10px] tracking-[0.22em] text-text-muted uppercase">
-        Candidates · {candidates.length}
-      </p>
+    <Card>
+      <Card.Eyebrow count={candidates.length}>Candidates</Card.Eyebrow>
+      <Card.Body>
+        <form onSubmit={submit} className="flex gap-2">
+          <input
+            type="text"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder="Add a title…"
+            maxLength={120}
+            className="flex-1 rounded-md border border-border bg-transparent px-3 py-2 text-sm text-text placeholder:text-text-muted/60 focus:border-border-strong focus:outline-none"
+          />
+          <Button type="submit" variant="primary" disabled={!draft.trim()}>
+            Add
+          </Button>
+        </form>
 
-      <form onSubmit={submit} className="mt-3 flex gap-2">
-        <input
-          type="text"
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          placeholder="Add a title…"
-          maxLength={120}
-          className="flex-1 rounded-md border border-white/10 bg-transparent px-3 py-2 text-sm text-text placeholder:text-text-muted/60 focus:border-white/30 focus:outline-none"
-        />
-        <button
-          type="submit"
-          disabled={!draft.trim()}
-          className="cursor-pointer rounded-md bg-text px-4 py-2 text-sm font-medium text-bg transition-colors hover:opacity-90 disabled:cursor-default disabled:opacity-30"
-        >
-          Add
-        </button>
-      </form>
-
-      {candidates.length === 0 ? (
-        <p className="mt-4 text-sm text-text-muted">
-          No candidates yet. Add the first one.
-        </p>
-      ) : (
-        <ul className="mt-4 space-y-2">
-          {candidates.map((c) => (
-            <CandidateRow
-              key={c.id}
-              candidate={c}
-              voterIds={votes.get(c.id) ?? EMPTY_VOTER_LIST}
-              userInfoById={userInfoById}
-              voted={votedCandidateIds.has(c.id)}
-              onVote={onVote}
-              onUnvote={onUnvote}
-              onRemove={onRemove}
-            />
-          ))}
-        </ul>
-      )}
-    </div>
+        {candidates.length === 0 ? (
+          <p className="mt-4 text-sm text-text-muted">
+            No candidates yet. Add the first one.
+          </p>
+        ) : (
+          <ul className="mt-4 space-y-2">
+            {candidates.map((c) => (
+              <CandidateRow
+                key={c.id}
+                candidate={c}
+                voterIds={votes.get(c.id) ?? EMPTY_VOTER_LIST}
+                userInfoById={userInfoById}
+                voted={votedCandidateIds.has(c.id)}
+                onVote={onVote}
+                onUnvote={onUnvote}
+                onRemove={onRemove}
+              />
+            ))}
+          </ul>
+        )}
+      </Card.Body>
+    </Card>
   );
 }
 
@@ -326,73 +314,34 @@ function CandidateRow({
   onRemove: (id: string) => void;
 }) {
   return (
-    <li className="flex items-center justify-between gap-3 rounded-md border border-white/10 bg-white/[0.01] px-3 py-2 text-sm">
+    <li className="flex items-center justify-between gap-3 rounded-md border border-border bg-bg/40 px-3 py-2 text-sm">
       <span className="min-w-0 truncate">{candidate.title}</span>
       <div className="flex shrink-0 items-center gap-3">
-        <VoterStack voterIds={voterIds} userInfoById={userInfoById} />
-        <button
-          type="button"
+        <AvatarStack
+          userIds={voterIds}
+          userInfoById={userInfoById}
+          size="md"
+          max={3}
+          showCount
+          highlight={voted}
+        />
+        <Button
+          size="sm"
+          variant={voted ? "primary" : "secondary"}
           onClick={() =>
             voted ? onUnvote(candidate.id) : onVote(candidate.id)
           }
-          className={
-            voted
-              ? "cursor-pointer rounded-md border border-white/30 bg-white/10 px-3 py-1.5 text-xs font-medium text-text transition-colors hover:bg-white/15"
-              : "cursor-pointer rounded-md border border-white/10 px-3 py-1.5 text-xs text-text-muted transition-colors hover:bg-white/5 hover:text-text"
-          }
         >
           {voted ? "Voted" : "Vote"}
-        </button>
-        <button
-          type="button"
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
           onClick={() => onRemove(candidate.id)}
-          className="cursor-pointer text-xs text-text-muted hover:text-amber-200/85"
         >
           remove
-        </button>
+        </Button>
       </div>
     </li>
-  );
-}
-
-function VoterStack({
-  voterIds,
-  userInfoById,
-}: {
-  voterIds: readonly string[];
-  userInfoById: ReadonlyMap<string, UserInfo>;
-}) {
-  if (voterIds.length === 0) return null;
-
-  // Cap at 3 visible avatars so a popular candidate doesn't blow out the row;
-  // total count is shown to the right regardless.
-  const visible = voterIds.slice(0, 3);
-
-  return (
-    <div className="flex items-center gap-2">
-      <div className="flex">
-        {visible.map((id, i) => {
-          const info = userInfoById.get(id);
-          const stackOffset = i > 0 ? "-ml-1.5" : "";
-          return info?.avatarUrl ? (
-            <img
-              key={id}
-              src={info.avatarUrl}
-              alt=""
-              title={info.name ?? "Voter"}
-              referrerPolicy="no-referrer"
-              className={`h-5 w-5 shrink-0 rounded-full border border-bg ${stackOffset}`}
-            />
-          ) : (
-            <span
-              key={id}
-              title={info?.name ?? "Voter"}
-              className={`inline-block h-5 w-5 shrink-0 rounded-full border border-bg bg-white/10 ${stackOffset}`}
-            />
-          );
-        })}
-      </div>
-      <span className="text-xs text-text-muted">{voterIds.length}</span>
-    </div>
   );
 }
