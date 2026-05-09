@@ -19,10 +19,10 @@ export function evaluate(
 
   const crossed: string[] = [];
   for (const [candidateId, voterIds] of votes) {
-    const presentVoteCount = voterIds.length;
-    if (presentVoteCount === 0) continue;
+    const voteCount = voterIds.length;
+    if (voteCount === 0) continue;
 
-    if (matchesThreshold(presentVoteCount, threshold, presentCount)) {
+    if (matchesThreshold(voteCount, threshold, presentCount)) {
       crossed.push(candidateId);
     }
   }

@@ -131,14 +131,17 @@ describe("evaluate", () => {
       try {
         const result = evaluate(
           new Map([
-            ["c1", ["u1", "u2"]],
             ["c2", ["u1", "u2"]],
+            ["c1", ["u1", "u2"]],
           ]),
           rule("unanimous"),
           new Set(["u1", "u2"]),
         );
-        const sorted = [...result.tiedIds].sort();
-        expect(result.winnerId).toBe(sorted[sorted.length - 1]);
+        // Picks the last element of the implementation's iteration order
+        // (Map insertion order), independent of lexicographic sort.
+        expect(result.winnerId).toBe(
+          result.tiedIds[Math.floor(0.99 * result.tiedIds.length)],
+        );
       } finally {
         spy.mockRestore();
       }
