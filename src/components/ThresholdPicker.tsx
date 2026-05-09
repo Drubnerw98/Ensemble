@@ -44,6 +44,7 @@ export function ThresholdPicker({
           {isHost ? (
             <>
               <select
+                aria-label="Threshold rule"
                 value={threshold.kind}
                 onChange={(e) =>
                   handleKindChange(e.target.value as ThresholdRule["kind"])
