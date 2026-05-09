@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { HeroCard } from "./HeroCard";
 
@@ -66,5 +66,62 @@ describe("HeroCard", () => {
       screen.getByRole("button", { name: /reconsider/i }),
     );
     expect(onReconsider).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("HeroCard spin and animateOnMount", () => {
+  it("renders the winner directly when not spinning", () => {
+    render(
+      <HeroCard
+        winnerTitle="Winner"
+        voterIds={[]}
+        userInfoById={userInfoById}
+        isHost={false}
+        onReconsider={() => {}}
+        spinningTitles={[]}
+        animateOnMount={true}
+      />,
+    );
+    expect(screen.getByText("Winner")).toBeInTheDocument();
+  });
+
+  it("cycles through spinning titles before settling on the winner when animateOnMount", () => {
+    vi.useFakeTimers();
+    try {
+      render(
+        <HeroCard
+          winnerTitle="Winner"
+          voterIds={[]}
+          userInfoById={userInfoById}
+          isHost={false}
+          onReconsider={() => {}}
+          spinningTitles={["Alpha", "Beta", "Winner"]}
+          animateOnMount={true}
+        />,
+      );
+      expect(screen.getByRole("heading")).toHaveTextContent(/Alpha|Beta|Winner/);
+      act(() => {
+        vi.advanceTimersByTime(1500);
+      });
+      expect(screen.getByRole("heading")).toHaveTextContent("Winner");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("renders the winner immediately when animateOnMount is false (late joiner)", () => {
+    render(
+      <HeroCard
+        winnerTitle="Winner"
+        voterIds={[]}
+        userInfoById={userInfoById}
+        isHost={false}
+        onReconsider={() => {}}
+        spinningTitles={["Alpha", "Beta", "Winner"]}
+        animateOnMount={false}
+      />,
+    );
+    // No spin even with multiple tied titles — late joiner sees winner directly.
+    expect(screen.getByRole("heading")).toHaveTextContent("Winner");
   });
 });

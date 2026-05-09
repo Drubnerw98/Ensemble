@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { UserButton, useUser } from "@clerk/clerk-react";
 import {
@@ -8,7 +8,7 @@ import {
   useStorage,
 } from "@liveblocks/react/suspense";
 import { LiveList, LiveObject } from "@liveblocks/client";
-import type { Candidate, ThresholdRule } from "../lib/liveblocks";
+import type { Candidate, ConsensusPhase, ThresholdRule } from "../lib/liveblocks";
 import { evaluate } from "../lib/consensus";
 import { AvatarStack, Button, Card } from "./ui";
 import { HeroCard } from "./HeroCard";
@@ -54,6 +54,24 @@ export function SessionUI({ code }: { code: string }) {
   }, [self.id, others]);
 
   const isHost = self.id === consensus.hostId;
+
+  const prevPhaseRef = useRef<ConsensusPhase | null>(null);
+  const [observedTransition, setObservedTransition] = useState(false);
+
+  useEffect(() => {
+    if (
+      prevPhaseRef.current === "voting" &&
+      consensus.phase === "decided"
+    ) {
+      setObservedTransition(true);
+    }
+    if (consensus.phase === "voting") {
+      // Reconsider returned the room to voting — clear so the next
+      // decision can re-arm the animation gate cleanly.
+      setObservedTransition(false);
+    }
+    prevPhaseRef.current = consensus.phase;
+  }, [consensus.phase]);
 
   const votesSnapshot = useMemo(() => {
     const map = new Map<string, readonly string[]>();
@@ -259,6 +277,10 @@ export function SessionUI({ code }: { code: string }) {
             userInfoById={userInfoById}
             isHost={isHost}
             onReconsider={reconsider}
+            spinningTitles={(consensus.tiedIds as readonly string[]).map(
+              (id) => candidates.find((c) => c.id === id)?.title ?? "(removed)",
+            )}
+            animateOnMount={observedTransition}
           />
         ) : null}
 
