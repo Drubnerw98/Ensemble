@@ -36,7 +36,6 @@ export async function fetchMyProfile(
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
-    credentials: "include",
   });
   if (!res.ok) {
     let message = `Resonance API returned ${res.status}`;

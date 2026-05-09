@@ -169,7 +169,12 @@ function MemberChip({
   return (
     <li className="flex items-center gap-2 rounded-full border border-white/10 px-3 py-1 text-xs text-text">
       {avatarUrl ? (
-        <img src={avatarUrl} alt="" className="h-5 w-5 rounded-full" />
+        <img
+          src={avatarUrl}
+          alt=""
+          referrerPolicy="no-referrer"
+          className="h-5 w-5 rounded-full"
+        />
       ) : (
         <span className="inline-block h-5 w-5 rounded-full bg-white/10" />
       )}
@@ -375,6 +380,7 @@ function VoterStack({
               src={info.avatarUrl}
               alt=""
               title={info.name ?? "Voter"}
+              referrerPolicy="no-referrer"
               className={`h-5 w-5 shrink-0 rounded-full border border-bg ${stackOffset}`}
             />
           ) : (
