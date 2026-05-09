@@ -11,6 +11,22 @@ export type Candidate = {
   [key: string]: string | number;
 };
 
+export type ThresholdRule =
+  | { kind: "unanimous" }
+  | { kind: "majority" }
+  | { kind: "first-to-n"; n: number };
+
+export type ConsensusPhase = "voting" | "decided";
+
+export type Consensus = {
+  hostId: string;
+  threshold: ThresholdRule;
+  phase: ConsensusPhase;
+  winnerId: string | null;
+  tiedIds: string[];
+  decidedAt: number | null;
+};
+
 // Module augmentation tells Liveblocks' hooks (useStorage, useSelf, etc.)
 // what shape our room data has so they're typed end-to-end.
 declare global {
@@ -19,6 +35,7 @@ declare global {
     Storage: {
       candidates: LiveList<LiveObject<Candidate>>;
       votes: LiveMap<string, LiveList<string>>;
+      consensus: LiveObject<Consensus>;
     };
     UserMeta: {
       id: string;
