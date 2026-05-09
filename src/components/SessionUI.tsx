@@ -58,6 +58,9 @@ export function SessionUI({ code }: { code: string }) {
   const prevPhaseRef = useRef<ConsensusPhase | null>(null);
   const [observedTransition, setObservedTransition] = useState(false);
 
+  // prevPhaseRef starts null on mount: a late joiner whose first render shows
+  // phase === "decided" lands in observedTransition === false (no animation),
+  // which is the spec's late-joiner gate.
   useEffect(() => {
     if (
       prevPhaseRef.current === "voting" &&
@@ -78,6 +81,14 @@ export function SessionUI({ code }: { code: string }) {
     for (const [id, voters] of votes) map.set(id, voters);
     return map;
   }, [votes]);
+
+  const spinningTitles = useMemo(
+    () =>
+      (consensus.tiedIds as readonly string[]).map(
+        (id) => candidates.find((c) => c.id === id)?.title ?? "(removed)",
+      ),
+    [consensus.tiedIds, candidates],
+  );
 
   const votedCandidateIds = useMemo(() => {
     const set = new Set<string>();
@@ -277,9 +288,7 @@ export function SessionUI({ code }: { code: string }) {
             userInfoById={userInfoById}
             isHost={isHost}
             onReconsider={reconsider}
-            spinningTitles={(consensus.tiedIds as readonly string[]).map(
-              (id) => candidates.find((c) => c.id === id)?.title ?? "(removed)",
-            )}
+            spinningTitles={spinningTitles}
             animateOnMount={observedTransition}
           />
         ) : null}
