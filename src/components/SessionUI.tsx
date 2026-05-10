@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { UserButton } from "@clerk/clerk-react";
+import { useAuth, UserButton } from "@clerk/clerk-react";
 import { useConsensusRoom, type UserInfo, type PullState } from "../hooks/useConsensusRoom";
 import type { ThresholdRule } from "../lib/liveblocks";
+import { searchTmdb, type TmdbResult } from "../lib/tmdb";
 import { AvatarStack, Button, Card } from "./ui";
+import { CandidateAutocomplete } from "./CandidateAutocomplete";
 import { HeroCard } from "./HeroCard";
 import { ReadyCard } from "./ReadyCard";
 import { ThresholdPicker } from "./ThresholdPicker";
@@ -46,6 +48,10 @@ export function SessionUI({ code }: { code: string }) {
             winnerTitle={
               room.candidates.find((c) => c.id === room.consensus.winnerId)?.title ??
               "(removed)"
+            }
+            winnerPosterUrl={
+              room.candidates.find((c) => c.id === room.consensus.winnerId)?.posterUrl ??
+              null
             }
             voterIds={room.votes.get(room.consensus.winnerId) ?? EMPTY_VOTER_LIST}
             userInfoById={room.userInfoById}
@@ -95,6 +101,7 @@ export function SessionUI({ code }: { code: string }) {
           onVote={room.handleVote}
           onUnvote={room.handleUnvote}
           onPull={room.handlePull}
+          isSessionLocked={room.consensus.phase === "decided"}
         />
 
         {room.consensus.phase === "voting" ? (
@@ -222,6 +229,13 @@ function PullControl({
   );
 }
 
+type CandidateMeta = {
+  tmdbId: number;
+  posterUrl: string | null;
+  type: import("../lib/candidates").CandidateType;
+  year: number | null;
+};
+
 function CandidatesPanel({
   candidates,
   votes,
@@ -236,8 +250,15 @@ function CandidatesPanel({
   onVote,
   onUnvote,
   onPull,
+  isSessionLocked,
 }: {
-  candidates: readonly { readonly id: string; readonly title: string; readonly type: string; readonly year: number | null }[];
+  candidates: readonly {
+    readonly id: string;
+    readonly title: string;
+    readonly type: string;
+    readonly year: number | null;
+    readonly posterUrl?: string | null;
+  }[];
   votes: ReadonlyMap<string, readonly string[]>;
   userInfoById: ReadonlyMap<string, UserInfo>;
   votedCandidateIds: ReadonlySet<string>;
@@ -245,44 +266,71 @@ function CandidatesPanel({
   locked: boolean;
   justDecidedId: string | null;
   pullState: PullState;
-  onAdd: (title: string) => void;
+  onAdd: (title: string, meta?: CandidateMeta) => void;
   onRemove: (id: string) => void;
   onVote: (id: string) => void;
   onUnvote: (id: string) => void;
   onPull: () => void;
+  isSessionLocked: boolean;
 }) {
+  const { getToken } = useAuth();
   const [draft, setDraft] = useState("");
 
-  function submit(e: React.FormEvent) {
-    e.preventDefault();
-    const title = draft.trim();
-    if (!title) return;
+  // Build the search function with a fresh token on each call. Memoized
+  // so CandidateAutocomplete's effect deps stay stable across renders.
+  const search = useCallback(
+    async (query: string) => {
+      const token = await getToken();
+      if (!token) return [];
+      return searchTmdb(query, token);
+    },
+    [getToken],
+  );
+
+  const handleSelectResult = (result: TmdbResult) => {
+    const meta: CandidateMeta = {
+      tmdbId: result.tmdbId,
+      posterUrl: result.posterUrl,
+      type: result.mediaType === "movie" ? "movie" : "show",
+      year: result.year,
+    };
+    onAdd(result.title, meta);
+    setDraft("");
+  };
+
+  const handleFreeform = (title: string) => {
     onAdd(title);
     setDraft("");
-  }
+  };
 
   return (
     <Card>
       <Card.Eyebrow count={candidates.length}>Candidates</Card.Eyebrow>
       <Card.Body>
-        <form onSubmit={submit} className="flex gap-2">
-          <input
-            type="text"
+        <div className="flex gap-2">
+          <CandidateAutocomplete
             value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            placeholder="Add a title…"
-            maxLength={120}
-            disabled={locked}
-            className="flex-1 rounded-md border border-border bg-transparent px-3 py-2 text-sm text-text placeholder:text-text-muted/60 focus:border-border-strong focus:outline-none min-h-11 sm:min-h-0"
+            onChange={setDraft}
+            onSelectResult={handleSelectResult}
+            onSubmitFreeform={handleFreeform}
+            search={search}
+            disabled={isSessionLocked}
           />
           <Button
-            type="submit"
+            type="button"
             variant="primary"
-            disabled={locked || !draft.trim()}
+            disabled={isSessionLocked || !draft.trim()}
+            onClick={() => {
+              const title = draft.trim();
+              if (title) {
+                onAdd(title);
+                setDraft("");
+              }
+            }}
           >
             Add
           </Button>
-        </form>
+        </div>
 
         <PullControl locked={locked} pullState={pullState} onPull={onPull} />
 
@@ -331,6 +379,7 @@ function CandidateRow({
     readonly title: string;
     readonly type: string;
     readonly year: number | null;
+    readonly posterUrl?: string | null;
   };
   voterIds: readonly string[];
   pullerIds: readonly string[];
@@ -343,7 +392,6 @@ function CandidateRow({
   onRemove: (id: string) => void;
 }) {
   const meta = formatMeta(candidate.type, candidate.year);
-
   const pullerCaption = formatPullers(pullerIds, userInfoById);
 
   return (
@@ -352,16 +400,27 @@ function CandidateRow({
         justDecided ? " animate-row-pulse" : ""
       }`}
     >
-      <div className="min-w-0 flex-1">
-        <div className="flex items-baseline gap-2">
-          <span className="min-w-0 truncate">{candidate.title}</span>
-          {meta ? (
-            <span className="shrink-0 text-xs text-text-muted">{meta}</span>
+      <div className="flex min-w-0 flex-1 items-center gap-3">
+        {candidate.posterUrl ? (
+          <img
+            src={candidate.posterUrl}
+            alt=""
+            className="h-[72px] w-12 shrink-0 rounded-md object-cover"
+          />
+        ) : (
+          <div className="h-[72px] w-12 shrink-0 rounded-md bg-white/10" />
+        )}
+        <div className="min-w-0">
+          <div className="flex items-baseline gap-2">
+            <span className="min-w-0 truncate">{candidate.title}</span>
+            {meta ? (
+              <span className="shrink-0 text-xs text-text-muted">{meta}</span>
+            ) : null}
+          </div>
+          {pullerCaption ? (
+            <div className="mt-0.5 text-xs text-text-muted">{pullerCaption}</div>
           ) : null}
         </div>
-        {pullerCaption ? (
-          <div className="mt-0.5 text-xs text-text-muted">{pullerCaption}</div>
-        ) : null}
       </div>
       <div className="flex w-full items-center justify-between gap-3 sm:w-auto sm:shrink-0 sm:justify-end">
         <AvatarStack

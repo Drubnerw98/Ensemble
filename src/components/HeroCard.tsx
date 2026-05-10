@@ -9,6 +9,7 @@ const SPIN_TOTAL_MS = 1200;
 
 export function HeroCard({
   winnerTitle,
+  winnerPosterUrl = null,
   voterIds,
   userInfoById,
   isHost,
@@ -17,6 +18,7 @@ export function HeroCard({
   animateOnMount = true,
 }: {
   winnerTitle: string;
+  winnerPosterUrl?: string | null;
   voterIds: readonly string[];
   userInfoById: ReadonlyMap<string, UserInfo>;
   isHost: boolean;
@@ -77,23 +79,32 @@ export function HeroCard({
       <Card className="border-accent/40 bg-accent/[0.04]">
         <Card.Eyebrow>Tonight&apos;s pick</Card.Eyebrow>
         <Card.Body>
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="min-w-0 flex-1">
-              <h2 className="font-display text-2xl font-light tracking-tight text-text">
-                {displayedTitle}
-              </h2>
-              {settled ? (
-                <div className="mt-3">
-                  <AvatarStack
-                    userIds={voterIds}
-                    userInfoById={userInfoById}
-                    size="md"
-                    max={5}
-                    showCount
-                    highlight
-                  />
-                </div>
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="flex min-w-0 flex-1 items-start gap-4">
+              {winnerPosterUrl ? (
+                <img
+                  src={winnerPosterUrl}
+                  alt=""
+                  className="h-36 w-24 shrink-0 rounded-md object-cover"
+                />
               ) : null}
+              <div className="min-w-0">
+                <h2 className="font-display text-2xl font-light tracking-tight text-text">
+                  {displayedTitle}
+                </h2>
+                {settled ? (
+                  <div className="mt-3">
+                    <AvatarStack
+                      userIds={voterIds}
+                      userInfoById={userInfoById}
+                      size="md"
+                      max={5}
+                      showCount
+                      highlight
+                    />
+                  </div>
+                ) : null}
+              </div>
             </div>
             {isHost && settled ? (
               <Button variant="secondary" size="sm" onClick={onReconsider}>
