@@ -161,6 +161,46 @@ describe("pickCandidates", () => {
     );
     expect(result[0].type).toBe("movie");
   });
+
+  it("excludes titles already in the room", () => {
+    const result = pickCandidates(
+      {
+        library: lib("Dune", "Arrival", "Inception"),
+        recommendations: recs("Sicario", "Tenet"),
+      },
+      5,
+      new Set(["dune", "sicario"]),
+    );
+    expect(result.map((p) => p.title)).toEqual([
+      "Arrival",
+      "Inception",
+      "Tenet",
+    ]);
+  });
+
+  it("normalizes excluded titles for case and whitespace match", () => {
+    const result = pickCandidates(
+      {
+        library: lib("Dune Part Two", "Arrival"),
+        recommendations: [],
+      },
+      2,
+      new Set([normalizeTitle("DUNE  Part   Two")]),
+    );
+    expect(result.map((p) => p.title)).toEqual(["Arrival"]);
+  });
+
+  it("returns fewer than count when exclusions deplete the pool", () => {
+    const result = pickCandidates(
+      {
+        library: lib("A", "B"),
+        recommendations: recs("C", "D"),
+      },
+      10,
+      new Set(["a", "c"]),
+    );
+    expect(result.map((p) => p.title).sort()).toEqual(["B", "D"]);
+  });
 });
 
 describe("hasWatchableContent", () => {

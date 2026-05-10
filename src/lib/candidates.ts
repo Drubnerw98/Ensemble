@@ -30,18 +30,26 @@ const ALLOWED_TYPES = new Set<CandidateType>(["movie", "show", "anime"]);
 // backfill from the other to honor the requested count when possible.
 // Non-watchable types are filtered before slicing so the count is
 // honored against the allowed set.
+//
+// `excludedTitles` (normalized) lets callers filter out items already
+// in the room so subsequent pulls return new picks instead of redoing
+// the same head-of-list. Pass an empty set when this isn't relevant.
 export function pickCandidates(
   profile: {
     readonly library: readonly ResonanceItem[];
     readonly recommendations: readonly ResonanceItem[];
   },
   count: number,
+  excludedTitles: ReadonlySet<string> = new Set(),
 ): PickedCandidate[] {
   const target = Math.max(0, Math.min(count, MAX_COUNT));
   if (target === 0) return [];
 
-  const allowedLibrary = profile.library.filter(isAllowed);
-  const allowedRecs = profile.recommendations.filter(isAllowed);
+  const isEligible = (item: ResonanceItem) =>
+    isAllowed(item) && !excludedTitles.has(normalizeTitle(item.title));
+
+  const allowedLibrary = profile.library.filter(isEligible);
+  const allowedRecs = profile.recommendations.filter(isEligible);
 
   const libraryShare = Math.ceil(target * LIBRARY_SHARE);
   const recsShare = target - libraryShare;

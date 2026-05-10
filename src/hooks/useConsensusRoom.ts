@@ -328,7 +328,15 @@ export function useConsensusRoom() {
     if (consensus.phase !== "voting") return;
     setPulling(true);
     try {
-      const picks = pickCandidates(profile.data, consensus.candidatesPerPull);
+      // Exclude titles already in the room so a repeat pull returns new
+      // items from the user's library/recs instead of dedup-no-ops.
+      const excluded = new Set<string>();
+      for (const c of candidates) excluded.add(normalizeTitle(c.title));
+      const picks = pickCandidates(
+        profile.data,
+        consensus.candidatesPerPull,
+        excluded,
+      );
       if (picks.length === 0) return;
 
       const token = await getToken();
