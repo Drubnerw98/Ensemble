@@ -40,6 +40,7 @@ export function SessionUI({ code }: { code: string }) {
       </header>
 
       <section className="mx-auto mt-12 max-w-3xl space-y-8">
+        <ConnectionBanner status={room.connectionStatus} />
         <RoomCodeCard code={code} />
 
         <ThresholdPicker
@@ -131,6 +132,41 @@ export function SessionUI({ code }: { code: string }) {
         ) : null}
       </section>
     </main>
+  );
+}
+
+type ConnectionStatus =
+  | "initial"
+  | "connecting"
+  | "connected"
+  | "reconnecting"
+  | "disconnected";
+
+function ConnectionBanner({ status }: { status: ConnectionStatus }) {
+  if (status === "connected") return null;
+
+  // "initial" / "connecting" happen behind the ClientSideSuspense fallback
+  // in Session.tsx. By the time SessionUI is mounted, status is generally
+  // "connected" or transitioning. Surface only the user-visible variants.
+  const label =
+    status === "disconnected"
+      ? "Disconnected. Trying again."
+      : "Reconnecting...";
+
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className="flex items-center gap-2 rounded-md border border-warn/40 bg-warn/[0.08] px-3 py-2 text-xs text-warn"
+    >
+      <span
+        aria-hidden="true"
+        className="inline-block h-2 w-2 animate-pulse rounded-full bg-warn"
+      />
+      <span className="font-display font-medium tracking-[0.2em] uppercase">
+        {label}
+      </span>
+    </div>
   );
 }
 

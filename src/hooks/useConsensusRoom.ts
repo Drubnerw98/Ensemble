@@ -3,6 +3,7 @@ import {
   useMutation,
   useOthers,
   useSelf,
+  useStatus,
   useStorage,
   useUpdateMyPresence,
 } from "@liveblocks/react/suspense";
@@ -49,6 +50,7 @@ export function useConsensusRoom() {
   const consensus = useStorage((root) => root.consensus);
   const others = useOthers();
   const self = useSelf();
+  const connectionStatus = useStatus();
   const profile = useResonanceProfile();
   const { getToken } = useAuth();
 
@@ -608,6 +610,8 @@ export function useConsensusRoom() {
     thresholdVotesNeeded,
     // animation gate
     observedTransition,
+    // connection status: "initial" | "connecting" | "connected" | "reconnecting" | "disconnected"
+    connectionStatus,
     // pull state
     pullState,
     // handlers
