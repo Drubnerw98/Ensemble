@@ -7,9 +7,11 @@ import {
   useUpdateMyPresence,
 } from "@liveblocks/react/suspense";
 import { LiveList, LiveObject } from "@liveblocks/client";
+import { useAuth } from "@clerk/clerk-react";
 import type { Candidate, ConsensusPhase, ThresholdRule } from "../lib/liveblocks";
 import { evaluate } from "../lib/consensus";
 import { normalizeTitle, pickCandidates, type PickedCandidate } from "../lib/candidates";
+import { searchTmdb, pickBestMatch } from "../lib/tmdb";
 import { useResonanceProfile } from "./useResonanceProfile";
 
 export type UserInfo = { name?: string; avatarUrl?: string };
@@ -28,6 +30,7 @@ export function useConsensusRoom() {
   const others = useOthers();
   const self = useSelf();
   const profile = useResonanceProfile();
+  const { getToken } = useAuth();
 
   const userInfoById = useMemo(() => {
     const map = new Map<string, UserInfo>();
@@ -159,7 +162,16 @@ export function useConsensusRoom() {
   }, [candidates]);
 
   const addCandidate = useMutation(
-    ({ storage, self }, title: string) => {
+    (
+      { storage, self },
+      title: string,
+      meta?: {
+        tmdbId: number;
+        posterUrl: string | null;
+        type: import("../lib/candidates").CandidateType;
+        year: number | null;
+      },
+    ) => {
       if (storage.get("consensus").get("phase") !== "voting") return;
       const cleanedTitle = title.trim();
       if (!cleanedTitle) return;
@@ -169,7 +181,8 @@ export function useConsensusRoom() {
       // Covers sequential adds only. True simultaneous adds from two
       // clients both see an empty list and both push, producing a
       // duplicate row that the spec accepts as a CRDT race we don't
-      // server-side merge.
+      // server-side merge. Don't overwrite existing TMDB metadata on a
+      // duplicate add — first writer wins on posterUrl/tmdbId.
       for (let i = 0; i < list.length; i++) {
         const existing = list.get(i);
         if (!existing) continue;
@@ -189,8 +202,10 @@ export function useConsensusRoom() {
         new LiveObject<Candidate>({
           id: crypto.randomUUID(),
           title: cleanedTitle,
-          type: "unknown",
-          year: null,
+          type: meta?.type ?? "unknown",
+          year: meta?.year ?? null,
+          posterUrl: meta?.posterUrl ?? null,
+          tmdbId: meta?.tmdbId ?? null,
           addedBy: new LiveList([self.id]),
           addedAt: Date.now(),
         }),
@@ -199,10 +214,13 @@ export function useConsensusRoom() {
     [],
   );
 
-  // Wired to the Pull button in Task 9. The void reference below
-  // satisfies tsconfig's noUnusedLocals between this task and Task 9.
+  type EnrichedCandidate = PickedCandidate & {
+    posterUrl: string | null;
+    tmdbId: number | null;
+  };
+
   const pullCandidates = useMutation(
-    ({ storage, self }, picked: readonly PickedCandidate[]) => {
+    ({ storage, self }, picked: readonly EnrichedCandidate[]) => {
       if (storage.get("consensus").get("phase") !== "voting") return;
       const list = storage.get("candidates");
       for (const pick of picked) {
@@ -231,6 +249,8 @@ export function useConsensusRoom() {
             title: pick.title,
             type: pick.type,
             year: pick.year,
+            posterUrl: pick.posterUrl,
+            tmdbId: pick.tmdbId,
             addedBy: new LiveList([self.id]),
             addedAt: Date.now(),
           }),
@@ -247,7 +267,40 @@ export function useConsensusRoom() {
     setPulling(true);
     try {
       const picks = pickCandidates(profile.data, consensus.candidatesPerPull);
-      if (picks.length > 0) pullCandidates(picks);
+      if (picks.length === 0) return;
+
+      const token = await getToken();
+
+      // Run all TMDB lookups in parallel. One failed lookup shouldn't
+      // block the rest — Promise.allSettled gives each pick its own
+      // outcome and we fall back to posterUrl=null on failure.
+      const settled = await Promise.allSettled(
+        picks.map(async (pick): Promise<EnrichedCandidate> => {
+          if (!token) return { ...pick, posterUrl: null, tmdbId: null };
+          // Map candidate type to TMDB mediaType filter.
+          const tmdbType: "movie" | "tv" | null =
+            pick.type === "movie"
+              ? "movie"
+              : pick.type === "show" || pick.type === "anime"
+                ? "tv"
+                : null;
+          const results = await searchTmdb(pick.title, token);
+          const best = pickBestMatch(results, tmdbType, pick.year);
+          return {
+            ...pick,
+            posterUrl: best?.posterUrl ?? null,
+            tmdbId: best?.tmdbId ?? null,
+          };
+        }),
+      );
+
+      const enriched: EnrichedCandidate[] = settled.map((result, i) =>
+        result.status === "fulfilled"
+          ? result.value
+          : { ...picks[i], posterUrl: null, tmdbId: null },
+      );
+
+      pullCandidates(enriched);
     } finally {
       setPulling(false);
     }
