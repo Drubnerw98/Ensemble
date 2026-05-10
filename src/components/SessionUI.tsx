@@ -485,12 +485,14 @@ export function SessionUI({ code }: { code: string }) {
                 name={self.info?.name}
                 avatarUrl={self.info?.avatarUrl}
                 isYou
+                done={self.presence?.votingComplete ?? false}
               />
               {others.map((m) => (
                 <MemberChip
                   key={m.connectionId}
                   name={m.info?.name}
                   avatarUrl={m.info?.avatarUrl}
+                  done={m.presence?.votingComplete ?? false}
                 />
               ))}
             </ul>
@@ -543,10 +545,12 @@ function MemberChip({
   name,
   avatarUrl,
   isYou,
+  done,
 }: {
   name?: string;
   avatarUrl?: string;
   isYou?: boolean;
+  done?: boolean;
 }) {
   return (
     <li className="flex items-center gap-2 rounded-full border border-border px-3 py-1 text-xs text-text">
@@ -555,7 +559,7 @@ function MemberChip({
           src={avatarUrl}
           alt=""
           referrerPolicy="no-referrer"
-          className="h-5 w-5 rounded-full"
+          className="h-5 w-5 rounded-full object-cover"
         />
       ) : (
         <span className="inline-block h-5 w-5 rounded-full bg-white/10" />
@@ -564,6 +568,13 @@ function MemberChip({
         {name ?? "Anonymous"}
         {isYou && <span className="ml-1 text-text-muted">(you)</span>}
       </span>
+      {done ? (
+        <span
+          aria-label="ready"
+          title="Ready"
+          className="inline-block h-2 w-2 rounded-full bg-accent"
+        />
+      ) : null}
     </li>
   );
 }
