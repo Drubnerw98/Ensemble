@@ -681,7 +681,7 @@ function CandidateRow({
   const pullerCaption = formatPullers(pullerIds, userInfoById);
 
   return (
-    <li className="flex items-center justify-between gap-3 rounded-md border border-border bg-bg/40 px-3 py-2 text-sm">
+    <li className="flex flex-col gap-2 rounded-md border border-border bg-bg/40 px-3 py-2 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-3">
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline gap-2">
           <span className="min-w-0 truncate">{candidate.title}</span>
@@ -693,7 +693,7 @@ function CandidateRow({
           <div className="mt-0.5 text-xs text-text-muted">{pullerCaption}</div>
         ) : null}
       </div>
-      <div className="flex shrink-0 items-center gap-3">
+      <div className="flex w-full items-center justify-between gap-3 sm:w-auto sm:shrink-0 sm:justify-end">
         <AvatarStack
           userIds={voterIds}
           userInfoById={userInfoById}
@@ -702,24 +702,26 @@ function CandidateRow({
           showCount
           highlight={voted}
         />
-        <Button
-          size="sm"
-          variant={voted ? "primary" : "secondary"}
-          disabled={locked}
-          onClick={() =>
-            voted ? onUnvote(candidate.id) : onVote(candidate.id)
-          }
-        >
-          {voted ? "Voted" : "Vote"}
-        </Button>
-        <Button
-          size="sm"
-          variant="ghost"
-          disabled={locked}
-          onClick={() => onRemove(candidate.id)}
-        >
-          remove
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button
+            size="sm"
+            variant={voted ? "primary" : "secondary"}
+            disabled={locked}
+            onClick={() =>
+              voted ? onUnvote(candidate.id) : onVote(candidate.id)
+            }
+          >
+            {voted ? "Voted" : "Vote"}
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={locked}
+            onClick={() => onRemove(candidate.id)}
+          >
+            remove
+          </Button>
+        </div>
       </div>
     </li>
   );
