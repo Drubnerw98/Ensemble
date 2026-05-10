@@ -92,20 +92,20 @@ export function HeroCard({
 
   return (
     <motion.div ref={heroRef} {...motionProps}>
-      <Card className="border-accent/50 bg-gradient-to-b from-accent/[0.07] to-accent/[0.02] p-7 sm:p-8">
+      <Card className="border-accent/50 bg-gradient-to-b from-accent/[0.07] to-accent/[0.02] p-6 sm:p-8">
         <Card.Eyebrow>Tonight&apos;s pick</Card.Eyebrow>
         <Card.Body>
           <div className="flex flex-wrap items-start justify-between gap-5">
-            <div className="flex min-w-0 flex-1 items-start gap-5">
+            <div className="flex min-w-0 flex-1 items-start gap-4 sm:gap-5">
               {winnerPosterUrl ? (
                 <img
                   src={winnerPosterUrl}
                   alt=""
-                  className="h-52 w-36 shrink-0 rounded-md object-cover shadow-lg shadow-black/40"
+                  className="h-40 w-28 shrink-0 rounded-md object-cover shadow-lg shadow-black/40 sm:h-52 sm:w-36"
                 />
               ) : null}
               <div className="min-w-0">
-                <h2 className="font-display text-3xl font-light leading-tight tracking-tight text-text sm:text-4xl">
+                <h2 className="font-display text-2xl font-light leading-tight tracking-tight text-text sm:text-4xl">
                   {displayedTitle}
                 </h2>
                 {metaLabel && settled ? (

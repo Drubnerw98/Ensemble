@@ -500,7 +500,7 @@ function CandidateRow({
             />
             {showThresholdMeter ? (
               <span
-                className={`font-display text-[10px] font-medium tracking-[0.2em] uppercase ${
+                className={`shrink-0 whitespace-nowrap font-display text-[10px] font-medium tracking-[0.2em] uppercase ${
                   crossed ? "text-accent" : "text-text-muted"
                 }`}
                 aria-label={`${voterIds.length} of ${votesNeeded} votes needed`}

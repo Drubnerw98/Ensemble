@@ -24,7 +24,7 @@ export function ReactionRow({
   onToggle: (kind: ReactionKind) => void;
 }) {
   return (
-    <div className="flex gap-1 items-center">
+    <div className="flex flex-wrap gap-1.5 items-center sm:gap-1">
       {REACTION_ORDER.map(({ kind, emoji, label }) => {
         const { count, selfReacted } = state[kind];
         const ariaLabel = `${label} reaction${count > 0 ? `, count ${count}` : ""}`;
@@ -37,7 +37,7 @@ export function ReactionRow({
             disabled={disabled}
             onClick={() => onToggle(kind)}
             className={[
-              "flex h-7 items-center gap-1 rounded-full px-2 text-xs ring-1 transition-colors",
+              "flex h-8 items-center gap-1 rounded-full px-2.5 text-xs ring-1 transition-colors sm:h-7 sm:px-2",
               "disabled:cursor-not-allowed disabled:opacity-50",
               selfReacted
                 ? "bg-accent/15 ring-accent/40"
