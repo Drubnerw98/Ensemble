@@ -21,7 +21,7 @@ export function ReadyCard({
 }) {
   return (
     <Card>
-      <Card.Eyebrow>{`Ready, ${readyCount} / ${presentCount}`}</Card.Eyebrow>
+      <Card.Eyebrow>{`Ready · ${readyCount} / ${presentCount}`}</Card.Eyebrow>
       <Card.Body>
         <div className="flex flex-wrap items-center gap-3">
           <Button

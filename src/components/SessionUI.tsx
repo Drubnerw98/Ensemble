@@ -77,15 +77,15 @@ export function SessionUI({ code }: { code: string }) {
 
   const updateMyPresence = useUpdateMyPresence();
 
+  // Phase-transition handler. Three concerns interleaved on the same trigger
+  // (consensus.phase changed since last render): track prevPhase, set the
+  // animation gate observedTransition, and reset this client's own Done flag
+  // when the room reverts from decided to voting.
   if (prevPhase !== consensus.phase) {
-    // Phase changed: update prevPhase and adjust observedTransition in the
-    // same aborted-render pass so the next committed render has both correct.
     setPrevPhase(consensus.phase);
     if (prevPhase === "voting" && consensus.phase === "decided") {
       setObservedTransition(true);
     } else if (consensus.phase === "voting") {
-      // Reconsider returned to voting: clear the animation gate AND reset
-      // own votingComplete so the next round starts fresh.
       setObservedTransition(false);
       updateMyPresence({ votingComplete: false });
     }

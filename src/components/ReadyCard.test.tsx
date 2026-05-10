@@ -17,7 +17,7 @@ const baseProps = {
 describe("ReadyCard", () => {
   it("renders the eyebrow with the ready ratio", () => {
     render(<ReadyCard {...baseProps} readyCount={1} presentCount={2} />);
-    expect(screen.getByText(/ready, 1 \/ 2/i)).toBeInTheDocument();
+    expect(screen.getByText(/ready · 1 \/ 2/i)).toBeInTheDocument();
   });
 
   it("button reads 'I'm ready' when selfReady is false", () => {
