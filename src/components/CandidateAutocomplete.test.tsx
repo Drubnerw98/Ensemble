@@ -98,7 +98,7 @@ describe("CandidateAutocomplete", () => {
     await waitFor(() => expect(onSelectResult).toHaveBeenCalledWith(DUNE));
   });
 
-  it("calls onSubmitFreeform when Enter is pressed with no highlighted item", async () => {
+  it("calls onSubmitFreeform when Enter is pressed with no TMDB matches", async () => {
     const search = makeSearch([]);
     const { onSubmitFreeform } = renderAutocomplete({ value: "unknown title", search });
     // Wait for the no-matches state (confirms search settled).
@@ -108,6 +108,29 @@ describe("CandidateAutocomplete", () => {
     const input = screen.getByRole("combobox");
     await userEvent.type(input, "{Enter}");
     expect(onSubmitFreeform).toHaveBeenCalledWith("unknown title");
+  });
+
+  it("Enter with results but no highlight selects the top match", async () => {
+    const search = makeSearch([DUNE, SEVERANCE]);
+    const { onSelectResult, onSubmitFreeform } = renderAutocomplete({
+      value: "du",
+      search,
+    });
+    await waitFor(() => expect(screen.getByRole("listbox")).toBeInTheDocument(), {
+      timeout: 500,
+    });
+    const input = screen.getByRole("combobox");
+    await userEvent.type(input, "{Enter}");
+    expect(onSelectResult).toHaveBeenCalledWith(DUNE);
+    expect(onSubmitFreeform).not.toHaveBeenCalled();
+  });
+
+  it("Enter with short value (dropdown closed) freeforms the draft", async () => {
+    const search = makeSearch();
+    const { onSubmitFreeform } = renderAutocomplete({ value: "X", search });
+    const input = screen.getByRole("combobox");
+    await userEvent.type(input, "{Enter}");
+    expect(onSubmitFreeform).toHaveBeenCalledWith("X");
   });
 
   it("arrow keys move highlight through results", async () => {

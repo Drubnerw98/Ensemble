@@ -325,30 +325,14 @@ function CandidatesPanel({
     <Card>
       <Card.Eyebrow count={candidates.length}>Candidates</Card.Eyebrow>
       <Card.Body>
-        <div className="flex gap-2">
-          <CandidateAutocomplete
-            value={draft}
-            onChange={setDraft}
-            onSelectResult={handleSelectResult}
-            onSubmitFreeform={handleFreeform}
-            search={search}
-            disabled={isSessionLocked}
-          />
-          <Button
-            type="button"
-            variant="primary"
-            disabled={isSessionLocked || !draft.trim()}
-            onClick={() => {
-              const title = draft.trim();
-              if (title) {
-                onAdd(title);
-                setDraft("");
-              }
-            }}
-          >
-            Add
-          </Button>
-        </div>
+        <CandidateAutocomplete
+          value={draft}
+          onChange={setDraft}
+          onSelectResult={handleSelectResult}
+          onSubmitFreeform={handleFreeform}
+          search={search}
+          disabled={isSessionLocked}
+        />
 
         <PullControl locked={locked} pullState={pullState} onPull={onPull} />
 

@@ -80,6 +80,28 @@ export function CandidateAutocomplete({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    // Enter always submits, regardless of dropdown state. Dropdown-aware
+    // arrow / escape keys only matter when results are visible.
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const title = value.trim();
+      if (open && highlightIndex >= 0 && results[highlightIndex]) {
+        handleSelect(results[highlightIndex]);
+        return;
+      }
+      // No highlight: prefer the top dropdown match if one exists; this
+      // matches the visible-suggestion expectation. Falls back to freeform
+      // when the dropdown is closed or empty.
+      if (open && results.length > 0) {
+        handleSelect(results[0]);
+        return;
+      }
+      if (title) {
+        closeDropdown();
+        onSubmitFreeform(title);
+      }
+      return;
+    }
     if (!open) return;
     if (e.key === "ArrowDown") {
       e.preventDefault();
@@ -91,17 +113,6 @@ export function CandidateAutocomplete({
     } else if (e.key === "Escape") {
       e.preventDefault();
       closeDropdown();
-    } else if (e.key === "Enter") {
-      e.preventDefault();
-      if (highlightIndex >= 0 && results[highlightIndex]) {
-        handleSelect(results[highlightIndex]);
-      } else {
-        const title = value.trim();
-        if (title) {
-          closeDropdown();
-          onSubmitFreeform(title);
-        }
-      }
     }
   };
 
