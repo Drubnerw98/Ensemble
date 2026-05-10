@@ -132,7 +132,7 @@ These are drub's principles, demonstrated working in Resonance and now applied t
 
 ## Current state
 
-**Phase**: Consensus flow shipped. Configurable threshold (unanimous, majority, first-to-N), random tiebreaker with spin animation, lock + reconsider lifecycle, room-creator host with migration. Visual system and approval voting still live underneath.
+**Phase**: Resonance candidate population shipped. Per-user "Pull from my Resonance" button contributes a hybrid library + recommendations slice; multi-attribution dedup; type and year on candidates; host-configurable items-per-pull. Consensus flow and visual system live underneath.
 
 **Architectural decisions locked** (see `decisions.md` for the full reasoning):
 
@@ -153,6 +153,10 @@ These are drub's principles, demonstrated working in Resonance and now applied t
 15. Tie handling: random pick with spin reveal.
 16. Lifecycle: lock + reconsider, votes cleared on reconsider.
 17. Authority: room creator is host, migrates to lowest-connectionId member on drop.
+18. Candidate source: hybrid library + recommendations on the client.
+19. Trigger: per-user "Pull from my Resonance" button.
+20. Candidate shape: title, type, year, multi-attribution addedBy.
+21. Items per pull: host-configurable, default 5.
 
 **Next step**: Mobile breakpoints and polish (build step 8). Responsive layout, empty states, edge cases.
 
@@ -167,6 +171,7 @@ Drub said no week-by-week — here are the discrete steps. Adjust as we learn.
 5. **Voting + presence**: ✅ approval voting with attributed avatars (commit `530f5cf`), Liveblocks-auth hardened (commit `8b25bb9`).
 6. **Visual system pass**: ✅ tokens, four primitives, voter-convergence hero. Spec at `docs/superpowers/specs/2026-05-09-visual-system-design.md`.
 7. **Consensus flow**: ✅ configurable threshold, random tiebreaker, lock + reconsider, hero card reveal.
+7.5. **Resonance candidate population**: ✅ per-user pull, hybrid mix, multi-attribution, host-configurable volume.
 8. **Mobile breakpoints + polish**: ← here. Responsive layout, empty states, edge cases.
 9. **Deploy + real-user test**: ship to Vercel, run it with a friend.
 

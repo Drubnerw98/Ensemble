@@ -241,3 +241,59 @@ The `Why` line in each entry is what an interviewer will hear from drub when ask
 **Tradeoff accepted**: A host who drops loses their role even if they intended to come back. Accepted because the alternative (preserving host across disconnects) would require persistence and explicit reclaim flows, neither of which fit MVP scope.
 
 **Would revisit if**: We add explicit host-transfer UX (give the role to X), or if drub's friend-group testing shows host migration on disconnect feels disorienting.
+
+---
+
+## 2026-05-09 — Candidate source: hybrid library + recommendations on the client
+
+**Considered**: **Server-side slicing** (new Resonance endpoint that returns a pre-sliced candidate set), **client-side slicing** (widen `/profile/export` consumption, slice locally), **cached profile in Liveblocks** (persist the snapshot per user, slice from cache).
+
+**Decision**: Client-side slicing. Widen the existing `/profile/export` consumer to include `library` and `recommendations`; slice via a pure `pickCandidates` function in `src/lib/candidates.ts`.
+
+**Why**: Slicing policy is an Ensemble UX decision, not a Resonance concern. Resonance also serves Constellation, so adding feature-specific endpoints there should clear a higher bar. Widening an existing read is cheaper and faster than coordinating cross-repo changes. The pure function is fully testable. If profile-export ever becomes expensive enough to matter, server-side slicing is a graduation path.
+
+**Tradeoff accepted**: Each pull re-fetches the entire profile-export payload, including themes and archetypes that the call site does not use. Acceptable because the endpoint is already tuned for export and Constellation reads it the same way.
+
+**Would revisit if**: Profile-export response grows large enough that the per-pull bandwidth cost is observable, or Resonance gains a recommendation surface that we want server-mediated for personalization or rate-limiting reasons.
+
+---
+
+## 2026-05-09 — Trigger: per-user pull button
+
+**Considered**: **Host auto-pull on session create** (whoever opens the room contributes their slice automatically), **per-user pull button** (every member gets their own button to contribute their slice), **empty-by-default with on-demand host pull** (no auto-pull; host can press a button if they want).
+
+**Decision**: Per-user pull button.
+
+**Why**: Voting is fully symmetric (every member's vote weighs equally). The candidate pool should be too. Letting each member contribute their own slice gives every voter contribution agency and matches the egalitarian voting model. Host auto-pull would put one user's taste at the center and undercut the "shared decision" framing. Empty-by-default is too conservative for an MVP that needs to demonstrate the value prop.
+
+**Tradeoff accepted**: More UI surface (a button per user instead of a single host gesture), and more dedup logic to handle overlap when two members both have the same title. The dedup logic doubles as a feature (multi-attribution agreement signal).
+
+**Would revisit if**: Real-user testing shows members never press the button (the auto-pull would have been correct), or that the social pressure of seeing each other's library is uncomfortable enough to deter pulls.
+
+---
+
+## 2026-05-09 — Candidate shape: title, type, year, multi-attribution addedBy
+
+**Considered**: **Title only** (status quo), **title + minimal metadata** (type and year), **title + rich metadata** (cover art, blurb, deep links).
+
+**Decision**: Title + minimal metadata. `Candidate` gains `type: CandidateType` and `year: number | null`. `addedBy` becomes `LiveList<string>` to support multi-attribution.
+
+**Why**: Type and year disambiguate (two films named "Joker") at low cost: one closed-union type, one nullable number, no image loading. Rich metadata is appealing but doubles the rendering surface and storage payload, and "lo-fi clean" is closer to the Resonance/Constellation visual language than "rich card." Multi-attribution is a free agreement signal that emerges naturally from dedup.
+
+**Tradeoff accepted**: A schema change to `Candidate` (storage shape break), but ephemeral sessions mean no migration is needed. Manual entries default to type "unknown" and no year, which is honest about the lo-fi nature of typed-by-hand data.
+
+**Would revisit if**: Real-user testing shows users want covers and blurbs (and the cost of fetching them is acceptable), or if "unknown" type pollutes the UI in confusing ways.
+
+---
+
+## 2026-05-09 — Items per pull: host-configurable, default 5
+
+**Considered**: **Fixed 5**, **fixed 10**, **host-configurable per session**.
+
+**Decision**: Host-configurable, default 5, range 1 to 20. Control sits inside the existing ThresholdPicker card body, host-only.
+
+**Why**: Same asymmetry the consensus flow already accepted: hosts own "configure the room" gestures, members own "express my preference" gestures. Pull volume is a configuration decision, so attaching it to the host role is consistent. Host-configurable also covers small-room and large-room cases without separate logic. Default of 5 lands sessions around 8-15 candidates with overlap, which is the scannable range.
+
+**Tradeoff accepted**: One more host control (alongside the threshold rule). Surface area in the host UI grows, but stays inside one card so the visual cost is small.
+
+**Would revisit if**: Hosts always change the default (default is wrong) or never touch it (configuration was overengineered).
