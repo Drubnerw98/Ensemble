@@ -231,8 +231,9 @@ export function SessionUI({ code }: { code: string }) {
     }
   }, []);
 
-  const setThreshold = useMutation(({ storage }, rule: ThresholdRule) => {
+  const setThreshold = useMutation(({ storage, self }, rule: ThresholdRule) => {
     const c = storage.get("consensus");
+    if (self.id !== c.get("hostId")) return;
     if (c.get("phase") !== "voting") return;
     c.set("threshold", rule);
   }, []);
