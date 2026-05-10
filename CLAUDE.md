@@ -132,7 +132,7 @@ These are drub's principles, demonstrated working in Resonance and now applied t
 
 ## Current state
 
-**Phase**: Mobile polish shipped. Single sm breakpoint, stacked CandidateRow on phones, 44px touch targets via Button primitive shim, AvatarStack crush fix, items-per-pull local-buffer pattern. Resonance candidate population, consensus flow, and visual system live underneath.
+**Phase**: TMDB integration shipped. Poster thumbnails on CandidateRow and HeroCard. Autocomplete on manual entry with freeform fallback. Resonance pulls enriched with TMDB metadata before storage write. Mobile polish, consensus flow, and visual system live underneath.
 
 **Architectural decisions locked** (see `decisions.md` for the full reasoning):
 
@@ -160,6 +160,7 @@ These are drub's principles, demonstrated working in Resonance and now applied t
 22. Mobile breakpoint strategy: single breakpoint at sm (640px).
 23. Touch targets: 44px on mobile via Button primitive shim.
 24. Finalize-voting: per-user Done flag in Presence, all-present-Done auto-finalizes, host has Finalize-now override.
+25. TMDB integration: serverless proxy hides v3 read token, candidate schema gains optional posterUrl + tmdbId, autocomplete on manual entry with freeform fallback, Resonance pulls enriched before storage write.
 
 **Next step**: Deploy and real-user test (build step 9). Ship to Vercel, run a session with a friend.
 

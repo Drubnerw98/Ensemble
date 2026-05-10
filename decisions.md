@@ -339,3 +339,17 @@ The `Why` line in each entry is what an interviewer will hear from drub when ask
 **Tradeoff accepted**: One more gesture per voting round than the auto-lock model. Acceptable because the friend test directly demonstrated the auto-lock model was too eager, and "I'm ready" is a natural group-decision gesture.
 
 **Would revisit if**: Real users find the gesture redundant in trusted small-group sessions (unlikely given the friend-test feedback), or the asymmetry between vote (live) and Done (gesture) creates confusion about what's committed.
+
+---
+
+## 2026-05-10 -- TMDB integration for candidate enrichment
+
+**Considered**: client-side direct (key in bundle, simpler), serverless proxy (chosen), no-enrichment-only-text (status quo).
+
+**Decision**: Vercel serverless proxy at `api/tmdb.ts` with the v3 Read Access Token in env. Clerk-auth required (Resonance-users-only convention). Single search/multi endpoint maps to a tight `TmdbResult` shape (tmdbId, title, year, posterUrl, mediaType). Candidate schema gains optional `posterUrl` and `tmdbId`. Manual entry via TMDB-backed autocomplete with freeform fallback for obscure titles. Resonance pulls enriched in parallel before storage write.
+
+**Why**: Posters are the single biggest visual upgrade for the room: cards stop being text and start feeling like a media decision tool. Serverless proxy keeps the key out of the bundle and matches the existing `api/liveblocks-auth.ts` pattern. Search-multi covers movie+tv in one call, matching the existing watchable-types filter. Optional schema fields preserve backward compatibility with existing rooms.
+
+**Tradeoff accepted**: Each candidate add has a TMDB round-trip (a few hundred ms typed-to-suggestion); each Resonance pull has 5 concurrent lookups. Acceptable because TMDB free tier is generous (~50/sec) and the UX is "type a title, see results" which already implies waiting.
+
+**Would revisit if**: TMDB rate-limits start biting (move to cached search results), or genres/runtime become important enough to justify a per-candidate details lookup.
