@@ -75,6 +75,8 @@ export function SessionUI({ code }: { code: string }) {
   const [prevPhase, setPrevPhase] = useState<ConsensusPhase | null>(null);
   const [observedTransition, setObservedTransition] = useState(false);
 
+  const updateMyPresence = useUpdateMyPresence();
+
   if (prevPhase !== consensus.phase) {
     // Phase changed: update prevPhase and adjust observedTransition in the
     // same aborted-render pass so the next committed render has both correct.
@@ -82,12 +84,12 @@ export function SessionUI({ code }: { code: string }) {
     if (prevPhase === "voting" && consensus.phase === "decided") {
       setObservedTransition(true);
     } else if (consensus.phase === "voting") {
-      // Reconsider returned to voting: clear the gate for the next round.
+      // Reconsider returned to voting: clear the animation gate AND reset
+      // own votingComplete so the next round starts fresh.
       setObservedTransition(false);
+      updateMyPresence({ votingComplete: false });
     }
   }
-
-  const updateMyPresence = useUpdateMyPresence();
 
   const votesSnapshot = useMemo(() => {
     const map = new Map<string, readonly string[]>();
