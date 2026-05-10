@@ -10,7 +10,8 @@ import {
 import { LiveList, LiveObject } from "@liveblocks/client";
 import type { Candidate, ConsensusPhase, ThresholdRule } from "../lib/liveblocks";
 import { evaluate } from "../lib/consensus";
-import { normalizeTitle, type PickedCandidate } from "../lib/candidates";
+import { normalizeTitle, pickCandidates, type PickedCandidate } from "../lib/candidates";
+import { useResonanceProfile } from "../hooks/useResonanceProfile";
 import { AvatarStack, Button, Card } from "./ui";
 import { HeroCard } from "./HeroCard";
 import { ThresholdPicker } from "./ThresholdPicker";
@@ -26,6 +27,7 @@ export function SessionUI({ code }: { code: string }) {
   const others = useOthers();
   const self = useSelf();
   const navigate = useNavigate();
+  const profile = useResonanceProfile();
 
   const userInfoById = useMemo(() => {
     const map = new Map<string, UserInfo>();
@@ -105,6 +107,17 @@ export function SessionUI({ code }: { code: string }) {
     }
     return set;
   }, [votes, self.id]);
+
+  const pullersByCandidateId = useMemo(() => {
+    const map = new Map<string, readonly string[]>();
+    for (const c of candidates) {
+      // Liveblocks flattens LiveList<string> to readonly string[] at read time;
+      // the Candidate type still declares it as LiveList so we cast here.
+      const ids = c.addedBy as unknown as readonly string[];
+      map.set(c.id, ids);
+    }
+    return map;
+  }, [candidates]);
 
   const addCandidate = useMutation(
     ({ storage, self }, title: string) => {
@@ -187,7 +200,19 @@ export function SessionUI({ code }: { code: string }) {
     },
     [],
   );
-  void pullCandidates;
+  const [pulling, setPulling] = useState(false);
+
+  const handlePull = async () => {
+    if (profile.state !== "ready") return;
+    if (consensus.phase !== "voting") return;
+    setPulling(true);
+    try {
+      const picks = pickCandidates(profile.data, consensus.candidatesPerPull);
+      if (picks.length > 0) pullCandidates(picks);
+    } finally {
+      setPulling(false);
+    }
+  };
 
   const removeCandidate = useMutation(({ storage }, id: string) => {
     if (storage.get("consensus").get("phase") !== "voting") return;
@@ -406,11 +431,24 @@ export function SessionUI({ code }: { code: string }) {
           votes={votes}
           userInfoById={userInfoById}
           votedCandidateIds={votedCandidateIds}
+          pullersByCandidateId={pullersByCandidateId}
           locked={consensus.phase === "decided"}
+          pullState={
+            profile.state === "idle"
+              ? { kind: "idle" }
+              : profile.state === "loading"
+                ? { kind: "loading" }
+                : profile.state === "no-profile"
+                  ? { kind: "no-profile" }
+                  : profile.state === "error"
+                    ? { kind: "error", message: profile.message }
+                    : { kind: "ready", pulling }
+          }
           onAdd={addCandidate}
           onRemove={removeCandidate}
           onVote={castVote}
           onUnvote={unvote}
+          onPull={handlePull}
         />
       </section>
     </main>
@@ -483,26 +521,72 @@ function RoomCodeCard({ code }: { code: string }) {
   );
 }
 
+type PullState =
+  | { kind: "ready"; pulling: boolean }
+  | { kind: "no-profile" }
+  | { kind: "loading" }
+  | { kind: "error"; message: string }
+  | { kind: "idle" };
+
+function PullControl({
+  locked,
+  pullState,
+  onPull,
+}: {
+  locked: boolean;
+  pullState: PullState;
+  onPull: () => void;
+}) {
+  const disabled = locked || pullState.kind !== "ready" || pullState.pulling;
+  let helper: string | null = null;
+  if (pullState.kind === "no-profile") helper = "Sign in to Resonance to pull suggestions.";
+  if (pullState.kind === "error") helper = pullState.message;
+  if (pullState.kind === "loading") helper = "Loading your Resonance profile…";
+
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-3">
+      <Button
+        type="button"
+        size="sm"
+        variant="secondary"
+        disabled={disabled}
+        onClick={onPull}
+      >
+        {pullState.kind === "ready" && pullState.pulling
+          ? "Pulling…"
+          : "Pull from my Resonance"}
+      </Button>
+      {helper ? <span className="text-xs text-text-muted">{helper}</span> : null}
+    </div>
+  );
+}
+
 function CandidatesPanel({
   candidates,
   votes,
   userInfoById,
   votedCandidateIds,
+  pullersByCandidateId,
   locked,
+  pullState,
   onAdd,
   onRemove,
   onVote,
   onUnvote,
+  onPull,
 }: {
-  candidates: readonly { readonly id: string; readonly title: string }[];
+  candidates: readonly { readonly id: string; readonly title: string; readonly type: string; readonly year: number | null }[];
   votes: ReadonlyMap<string, readonly string[]>;
   userInfoById: ReadonlyMap<string, UserInfo>;
   votedCandidateIds: ReadonlySet<string>;
+  pullersByCandidateId: ReadonlyMap<string, readonly string[]>;
   locked: boolean;
+  pullState: PullState;
   onAdd: (title: string) => void;
   onRemove: (id: string) => void;
   onVote: (id: string) => void;
   onUnvote: (id: string) => void;
+  onPull: () => void;
 }) {
   const [draft, setDraft] = useState("");
 
@@ -528,14 +612,20 @@ function CandidatesPanel({
             disabled={locked}
             className="flex-1 rounded-md border border-border bg-transparent px-3 py-2 text-sm text-text placeholder:text-text-muted/60 focus:border-border-strong focus:outline-none"
           />
-          <Button type="submit" variant="primary" disabled={locked || !draft.trim()}>
+          <Button
+            type="submit"
+            variant="primary"
+            disabled={locked || !draft.trim()}
+          >
             Add
           </Button>
         </form>
 
+        <PullControl locked={locked} pullState={pullState} onPull={onPull} />
+
         {candidates.length === 0 ? (
           <p className="mt-4 text-sm text-text-muted">
-            No candidates yet. Add the first one.
+            No candidates yet. Add the first one or pull from your Resonance.
           </p>
         ) : (
           <ul className="mt-4 space-y-2">
@@ -544,6 +634,7 @@ function CandidatesPanel({
                 key={c.id}
                 candidate={c}
                 voterIds={votes.get(c.id) ?? EMPTY_VOTER_LIST}
+                pullerIds={pullersByCandidateId.get(c.id) ?? EMPTY_VOTER_LIST}
                 userInfoById={userInfoById}
                 voted={votedCandidateIds.has(c.id)}
                 locked={locked}
@@ -562,6 +653,7 @@ function CandidatesPanel({
 function CandidateRow({
   candidate,
   voterIds,
+  pullerIds,
   userInfoById,
   voted,
   locked,
@@ -569,8 +661,14 @@ function CandidateRow({
   onUnvote,
   onRemove,
 }: {
-  candidate: { readonly id: string; readonly title: string };
+  candidate: {
+    readonly id: string;
+    readonly title: string;
+    readonly type: string;
+    readonly year: number | null;
+  };
   voterIds: readonly string[];
+  pullerIds: readonly string[];
   userInfoById: ReadonlyMap<string, UserInfo>;
   voted: boolean;
   locked: boolean;
@@ -578,9 +676,26 @@ function CandidateRow({
   onUnvote: (id: string) => void;
   onRemove: (id: string) => void;
 }) {
+  const meta =
+    candidate.type !== "unknown" || candidate.year !== null
+      ? formatMeta(candidate.type, candidate.year)
+      : null;
+
+  const pullerCaption = formatPullers(pullerIds, userInfoById);
+
   return (
     <li className="flex items-center justify-between gap-3 rounded-md border border-border bg-bg/40 px-3 py-2 text-sm">
-      <span className="min-w-0 truncate">{candidate.title}</span>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-baseline gap-2">
+          <span className="min-w-0 truncate">{candidate.title}</span>
+          {meta ? (
+            <span className="shrink-0 text-xs text-text-muted">{meta}</span>
+          ) : null}
+        </div>
+        {pullerCaption ? (
+          <div className="mt-0.5 text-xs text-text-muted">{pullerCaption}</div>
+        ) : null}
+      </div>
       <div className="flex shrink-0 items-center gap-3">
         <AvatarStack
           userIds={voterIds}
@@ -611,4 +726,22 @@ function CandidateRow({
       </div>
     </li>
   );
+}
+
+function formatMeta(type: string, year: number | null): string {
+  const parts: string[] = [];
+  if (type !== "unknown") parts.push(type);
+  if (year !== null) parts.push(String(year));
+  return parts.length > 0 ? `(${parts.join(" · ")})` : "";
+}
+
+function formatPullers(
+  ids: readonly string[],
+  userInfoById: ReadonlyMap<string, UserInfo>,
+): string | null {
+  if (ids.length === 0) return null;
+  const names = ids.map((id) => userInfoById.get(id)?.name ?? "Anonymous");
+  if (names.length === 1) return `added by ${names[0]}`;
+  if (names.length === 2) return `added by ${names[0]} and ${names[1]}`;
+  return `added by ${names[0]} and ${names.length - 1} others`;
 }
