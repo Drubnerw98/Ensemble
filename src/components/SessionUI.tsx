@@ -1,438 +1,18 @@
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { UserButton } from "@clerk/clerk-react";
-import {
-  useMutation,
-  useOthers,
-  useSelf,
-  useStorage,
-  useUpdateMyPresence,
-} from "@liveblocks/react/suspense";
-import { LiveList, LiveObject } from "@liveblocks/client";
-import type { Candidate, ConsensusPhase, ThresholdRule } from "../lib/liveblocks";
-import { evaluate } from "../lib/consensus";
-import { normalizeTitle, pickCandidates, type PickedCandidate } from "../lib/candidates";
-import { useResonanceProfile } from "../hooks/useResonanceProfile";
+import { useConsensusRoom, type UserInfo, type PullState } from "../hooks/useConsensusRoom";
+import type { ThresholdRule } from "../lib/liveblocks";
 import { AvatarStack, Button, Card } from "./ui";
 import { HeroCard } from "./HeroCard";
 import { ReadyCard } from "./ReadyCard";
 import { ThresholdPicker } from "./ThresholdPicker";
 
-type UserInfo = { name?: string; avatarUrl?: string };
-
 const EMPTY_VOTER_LIST: readonly string[] = [];
 
 export function SessionUI({ code }: { code: string }) {
-  const candidates = useStorage((root) => root.candidates);
-  const votes = useStorage((root) => root.votes);
-  const consensus = useStorage((root) => root.consensus);
-  const others = useOthers();
-  const self = useSelf();
   const navigate = useNavigate();
-  const profile = useResonanceProfile();
-
-  const userInfoById = useMemo(() => {
-    const map = new Map<string, UserInfo>();
-    if (self.id) {
-      map.set(self.id, {
-        name: self.info?.name,
-        avatarUrl: self.info?.avatarUrl,
-      });
-    }
-    for (const other of others) {
-      if (other.id) {
-        map.set(other.id, {
-          name: other.info?.name,
-          avatarUrl: other.info?.avatarUrl,
-        });
-      }
-    }
-    return map;
-  }, [self.id, self.info, others]);
-
-  const presentMemberIds = useMemo(() => {
-    const set = new Set<string>();
-    if (self.id) set.add(self.id);
-    for (const other of others) if (other.id) set.add(other.id);
-    return set;
-  }, [self.id, others]);
-
-  const isHost = self.id === consensus.hostId;
-
-  // Track both the previous phase and whether this client observed the
-  // voting->decided transition. Both are stored as state so we avoid reading
-  // or writing refs during render (react-hooks/refs) and avoid synchronous
-  // setState in effects (react-hooks/set-state-in-effect).
-  //
-  // The React docs' recommended pattern for "previous value" tracking is to
-  // call setState during render when the relevant prop changes. React will
-  // discard the current render output and immediately re-render with the new
-  // state, making it effectively synchronous for the user.
-  //
-  // prevPhase starts null: a late joiner whose first render sees
-  // phase === "decided" gets observedTransition === false (no animation gate),
-  // which is the spec's late-joiner requirement.
-  const [prevPhase, setPrevPhase] = useState<ConsensusPhase | null>(null);
-  const [observedTransition, setObservedTransition] = useState(false);
-
-  const updateMyPresence = useUpdateMyPresence();
-
-  // Phase-transition handler. Three concerns interleaved on the same trigger
-  // (consensus.phase changed since last render): track prevPhase, set the
-  // animation gate observedTransition, and reset this client's own Done flag
-  // when the room reverts from decided to voting.
-  if (prevPhase !== consensus.phase) {
-    setPrevPhase(consensus.phase);
-    if (prevPhase === "voting" && consensus.phase === "decided") {
-      setObservedTransition(true);
-    } else if (consensus.phase === "voting") {
-      setObservedTransition(false);
-      updateMyPresence({ votingComplete: false });
-    }
-  }
-
-  const votesSnapshot = useMemo(() => {
-    const map = new Map<string, readonly string[]>();
-    for (const [id, voters] of votes) map.set(id, voters);
-    return map;
-  }, [votes]);
-
-  const allPresentDone = useMemo(() => {
-    if (!self.presence?.votingComplete) return false;
-    for (const other of others) {
-      if (!other.id) continue;
-      if (!other.presence?.votingComplete) return false;
-    }
-    return true;
-  }, [self.presence?.votingComplete, others]);
-
-  const currentEvaluation = useMemo(
-    () =>
-      evaluate(
-        votesSnapshot,
-        consensus.threshold as ThresholdRule,
-        presentMemberIds,
-      ),
-    [votesSnapshot, consensus.threshold, presentMemberIds],
-  );
-
-  const noConsensusYet =
-    consensus.phase === "voting" &&
-    allPresentDone &&
-    currentEvaluation.winnerId === null;
-
-  const finalizeDisabled = currentEvaluation.winnerId === null;
-
-  const readyCount = useMemo(() => {
-    let count = self.presence?.votingComplete ? 1 : 0;
-    for (const other of others) {
-      if (!other.id) continue;
-      if (other.presence?.votingComplete) count += 1;
-    }
-    return count;
-  }, [self.presence?.votingComplete, others]);
-
-  const spinningTitles = useMemo(
-    () =>
-      (consensus.tiedIds as readonly string[]).map(
-        (id) => candidates.find((c) => c.id === id)?.title ?? "(removed)",
-      ),
-    [consensus.tiedIds, candidates],
-  );
-
-  const votedCandidateIds = useMemo(() => {
-    const set = new Set<string>();
-    if (!self.id) return set;
-    for (const [candidateId, voterIds] of votes) {
-      if (voterIds.includes(self.id)) set.add(candidateId);
-    }
-    return set;
-  }, [votes, self.id]);
-
-  const pullersByCandidateId = useMemo(() => {
-    const map = new Map<string, readonly string[]>();
-    for (const c of candidates) {
-      // Liveblocks flattens LiveList<string> to readonly string[] at read time;
-      // the Candidate type still declares it as LiveList so we cast here.
-      const ids = c.addedBy as unknown as readonly string[];
-      map.set(c.id, ids);
-    }
-    return map;
-  }, [candidates]);
-
-  const addCandidate = useMutation(
-    ({ storage, self }, title: string) => {
-      if (storage.get("consensus").get("phase") !== "voting") return;
-      const cleanedTitle = title.trim();
-      if (!cleanedTitle) return;
-      const list = storage.get("candidates");
-      const normalized = normalizeTitle(cleanedTitle);
-      // Dedup: append self to addedBy if the title is already in the list.
-      // Covers sequential adds only. True simultaneous adds from two
-      // clients both see an empty list and both push, producing a
-      // duplicate row that the spec accepts as a CRDT race we don't
-      // server-side merge.
-      for (let i = 0; i < list.length; i++) {
-        const existing = list.get(i);
-        if (!existing) continue;
-        if (normalizeTitle(existing.get("title")) !== normalized) continue;
-        const addedBy = existing.get("addedBy");
-        let alreadyAttributed = false;
-        for (let j = 0; j < addedBy.length; j++) {
-          if (addedBy.get(j) === self.id) {
-            alreadyAttributed = true;
-            break;
-          }
-        }
-        if (!alreadyAttributed) addedBy.push(self.id);
-        return;
-      }
-      list.push(
-        new LiveObject<Candidate>({
-          id: crypto.randomUUID(),
-          title: cleanedTitle,
-          type: "unknown",
-          year: null,
-          addedBy: new LiveList([self.id]),
-          addedAt: Date.now(),
-        }),
-      );
-    },
-    [],
-  );
-
-  // Wired to the Pull button in Task 9. The void reference below
-  // satisfies tsconfig's noUnusedLocals between this task and Task 9.
-  const pullCandidates = useMutation(
-    ({ storage, self }, picked: readonly PickedCandidate[]) => {
-      if (storage.get("consensus").get("phase") !== "voting") return;
-      const list = storage.get("candidates");
-      for (const pick of picked) {
-        const normalized = normalizeTitle(pick.title);
-        let merged = false;
-        for (let i = 0; i < list.length; i++) {
-          const existing = list.get(i);
-          if (!existing) continue;
-          if (normalizeTitle(existing.get("title")) !== normalized) continue;
-          const addedBy = existing.get("addedBy");
-          let alreadyAttributed = false;
-          for (let j = 0; j < addedBy.length; j++) {
-            if (addedBy.get(j) === self.id) {
-              alreadyAttributed = true;
-              break;
-            }
-          }
-          if (!alreadyAttributed) addedBy.push(self.id);
-          merged = true;
-          break;
-        }
-        if (merged) continue;
-        list.push(
-          new LiveObject<Candidate>({
-            id: crypto.randomUUID(),
-            title: pick.title,
-            type: pick.type,
-            year: pick.year,
-            addedBy: new LiveList([self.id]),
-            addedAt: Date.now(),
-          }),
-        );
-      }
-    },
-    [],
-  );
-  const [pulling, setPulling] = useState(false);
-
-  const handlePull = async () => {
-    if (profile.state !== "ready") return;
-    if (consensus.phase !== "voting") return;
-    setPulling(true);
-    try {
-      const picks = pickCandidates(profile.data, consensus.candidatesPerPull);
-      if (picks.length > 0) pullCandidates(picks);
-    } finally {
-      setPulling(false);
-    }
-  };
-
-  const removeCandidate = useMutation(({ storage }, id: string) => {
-    if (storage.get("consensus").get("phase") !== "voting") return;
-    const list = storage.get("candidates");
-    const votesMap = storage.get("votes");
-    for (let i = list.length - 1; i >= 0; i--) {
-      if (list.get(i)?.get("id") === id) {
-        list.delete(i);
-        // Drop the candidate's vote entry too so the map doesn't accumulate
-        // orphan keys over a session's lifetime.
-        votesMap.delete(id);
-        return;
-      }
-    }
-  }, []);
-
-  const castVote = useMutation(({ storage, self }, candidateId: string) => {
-    if (storage.get("consensus").get("phase") !== "voting") return;
-    const votesMap = storage.get("votes");
-    const list = votesMap.get(candidateId);
-    if (!list) {
-      votesMap.set(candidateId, new LiveList([self.id]));
-      return;
-    }
-    for (let i = 0; i < list.length; i++) {
-      if (list.get(i) === self.id) return;
-    }
-    list.push(self.id);
-  }, []);
-
-  const unvote = useMutation(({ storage, self }, candidateId: string) => {
-    if (storage.get("consensus").get("phase") !== "voting") return;
-    const votesMap = storage.get("votes");
-    const list = votesMap.get(candidateId);
-    if (!list) return;
-    for (let i = list.length - 1; i >= 0; i--) {
-      if (list.get(i) === self.id) {
-        list.delete(i);
-        return;
-      }
-    }
-  }, []);
-
-  const handleVote = (candidateId: string) => {
-    castVote(candidateId);
-    updateMyPresence({ votingComplete: false });
-  };
-
-  const handleUnvote = (candidateId: string) => {
-    unvote(candidateId);
-    updateMyPresence({ votingComplete: false });
-  };
-
-  const handleToggleReady = (ready: boolean) => {
-    updateMyPresence({ votingComplete: ready });
-  };
-
-  const handleFinalizeNow = () => {
-    if (!isHost) return;
-    if (consensus.phase !== "voting") return;
-    if (currentEvaluation.winnerId === null) return;
-    lockConsensus({
-      winnerId: currentEvaluation.winnerId,
-      tiedIds: currentEvaluation.tiedIds,
-    });
-  };
-
-  const setThreshold = useMutation(({ storage, self }, rule: ThresholdRule) => {
-    const c = storage.get("consensus");
-    if (self.id !== c.get("hostId")) return;
-    if (c.get("phase") !== "voting") return;
-    c.set("threshold", rule);
-  }, []);
-
-  const setCandidatesPerPull = useMutation(({ storage, self }, n: number) => {
-    const c = storage.get("consensus");
-    if (self.id !== c.get("hostId")) return;
-    if (c.get("phase") !== "voting") return;
-    if (!Number.isFinite(n)) return;
-    const clamped = Math.max(1, Math.min(20, Math.floor(n)));
-    c.set("candidatesPerPull", clamped);
-  }, []);
-
-  const lockConsensus = useMutation(
-    (
-      { storage },
-      payload: { winnerId: string; tiedIds: string[] },
-    ) => {
-      const c = storage.get("consensus");
-      // Idempotent: only the first detector locks.
-      if (c.get("phase") !== "voting") return;
-      // Belt-and-suspenders: today the schema writes phase + winnerId in the
-      // same update(), so this is unreachable via normal flow. Defends against
-      // a future change that splits them.
-      if (c.get("winnerId") !== null) return;
-      c.update({
-        phase: "decided",
-        winnerId: payload.winnerId,
-        tiedIds: payload.tiedIds,
-        decidedAt: Date.now(),
-      });
-    },
-    [],
-  );
-
-  const reconsider = useMutation(({ storage, self }) => {
-    const c = storage.get("consensus");
-    if (self.id !== c.get("hostId")) return; // host-only
-    if (c.get("phase") !== "decided") return; // only valid from decided phase
-    c.update({
-      phase: "voting",
-      winnerId: null,
-      tiedIds: [],
-      decidedAt: null,
-    });
-    // Full vote reset — see spec for rationale.
-    const votesMap = storage.get("votes");
-    for (const key of Array.from(votesMap.keys())) {
-      votesMap.delete(key);
-    }
-  }, []);
-
-  const setHost = useMutation(({ storage }, newHostId: string) => {
-    const c = storage.get("consensus");
-    // Idempotent: only write when current host actually needs replacing.
-    if (c.get("hostId") === newHostId) return;
-    c.set("hostId", newHostId);
-  }, []);
-
-  useEffect(() => {
-    if (consensus.phase !== "voting") return;
-    if (!allPresentDone) return;
-    // Liveblocks widens nested LiveObject fields to Lson via the
-    // [key: string]: Lson | undefined index signature on Consensus,
-    // re-narrow to the original ThresholdRule shape.
-    const result = evaluate(
-      votesSnapshot,
-      consensus.threshold as ThresholdRule,
-      presentMemberIds,
-    );
-    if (result.winnerId === null) return;
-    lockConsensus({
-      winnerId: result.winnerId,
-      tiedIds: result.tiedIds,
-    });
-  }, [
-    consensus.phase,
-    consensus.threshold,
-    votesSnapshot,
-    presentMemberIds,
-    allPresentDone,
-    lockConsensus,
-  ]);
-
-  useEffect(() => {
-    if (!self.id) return;
-    const hostId = consensus.hostId;
-    const present: { id: string; connectionId: number }[] = [];
-    present.push({ id: self.id, connectionId: self.connectionId });
-    for (const o of others) {
-      if (o.id) present.push({ id: o.id, connectionId: o.connectionId });
-    }
-    if (present.length === 0) return;
-
-    const hostStillPresent = present.some((p) => p.id === hostId);
-    if (hostStillPresent) return;
-
-    // Pick the lowest connectionId in the present set. Liveblocks assigns
-    // unique connectionIds per active connection in a room, so every client
-    // computes the same successor independently. Reconnects assign new ids,
-    // so this is "earliest unbroken connection," not "longest user history."
-    // CRDT resolves the case where multiple clients write at once.
-    const successor = present.reduce((min, p) =>
-      p.connectionId < min.connectionId ? p : min,
-    );
-    if (successor.id === self.id) {
-      setHost(self.id);
-    }
-  }, [self.id, self.connectionId, others, consensus.hostId, setHost]);
+  const room = useConsensusRoom();
 
   return (
     <main className="min-h-screen bg-bg p-6 text-text">
@@ -453,41 +33,41 @@ export function SessionUI({ code }: { code: string }) {
         <RoomCodeCard code={code} />
 
         <ThresholdPicker
-          threshold={consensus.threshold as ThresholdRule}
-          isHost={isHost}
-          presentCount={presentMemberIds.size}
-          onChange={setThreshold}
-          candidatesPerPull={consensus.candidatesPerPull}
-          onCandidatesPerPullChange={setCandidatesPerPull}
+          threshold={room.consensus.threshold as ThresholdRule}
+          isHost={room.isHost}
+          presentCount={room.presentMemberIds.size}
+          onChange={room.setThreshold}
+          candidatesPerPull={room.consensus.candidatesPerPull}
+          onCandidatesPerPullChange={room.setCandidatesPerPull}
         />
 
-        {consensus.phase === "decided" && consensus.winnerId ? (
+        {room.consensus.phase === "decided" && room.consensus.winnerId ? (
           <HeroCard
             winnerTitle={
-              candidates.find((c) => c.id === consensus.winnerId)?.title ??
+              room.candidates.find((c) => c.id === room.consensus.winnerId)?.title ??
               "(removed)"
             }
-            voterIds={votes.get(consensus.winnerId) ?? EMPTY_VOTER_LIST}
-            userInfoById={userInfoById}
-            isHost={isHost}
-            onReconsider={reconsider}
-            spinningTitles={spinningTitles}
-            animateOnMount={observedTransition}
+            voterIds={room.votes.get(room.consensus.winnerId) ?? EMPTY_VOTER_LIST}
+            userInfoById={room.userInfoById}
+            isHost={room.isHost}
+            onReconsider={room.reconsider}
+            spinningTitles={room.spinningTitles}
+            animateOnMount={room.observedTransition}
           />
         ) : null}
 
         <Card>
-          <Card.Eyebrow count={1 + others.length}>In the room</Card.Eyebrow>
+          <Card.Eyebrow count={1 + room.others.length}>In the room</Card.Eyebrow>
           <Card.Body>
             <ul className="flex flex-wrap gap-2">
               <MemberChip
-                key={self.connectionId}
-                name={self.info?.name}
-                avatarUrl={self.info?.avatarUrl}
+                key={room.self.connectionId}
+                name={room.self.info?.name}
+                avatarUrl={room.self.info?.avatarUrl}
                 isYou
-                done={self.presence?.votingComplete ?? false}
+                done={room.self.presence?.votingComplete ?? false}
               />
-              {others.map((m) => (
+              {room.others.map((m) => (
                 <MemberChip
                   key={m.connectionId}
                   name={m.info?.name}
@@ -500,40 +80,30 @@ export function SessionUI({ code }: { code: string }) {
         </Card>
 
         <CandidatesPanel
-          candidates={candidates}
-          votes={votes}
-          userInfoById={userInfoById}
-          votedCandidateIds={votedCandidateIds}
-          pullersByCandidateId={pullersByCandidateId}
-          locked={consensus.phase === "decided"}
-          pullState={
-            profile.state === "idle"
-              ? { kind: "idle" }
-              : profile.state === "loading"
-                ? { kind: "loading" }
-                : profile.state === "no-profile"
-                  ? { kind: "no-profile" }
-                  : profile.state === "error"
-                    ? { kind: "error", message: profile.message }
-                    : { kind: "ready", pulling }
-          }
-          onAdd={addCandidate}
-          onRemove={removeCandidate}
-          onVote={handleVote}
-          onUnvote={handleUnvote}
-          onPull={handlePull}
+          candidates={room.candidates}
+          votes={room.votes}
+          userInfoById={room.userInfoById}
+          votedCandidateIds={room.votedCandidateIds}
+          pullersByCandidateId={room.pullersByCandidateId}
+          locked={room.consensus.phase === "decided"}
+          pullState={room.pullState}
+          onAdd={room.addCandidate}
+          onRemove={room.removeCandidate}
+          onVote={room.handleVote}
+          onUnvote={room.handleUnvote}
+          onPull={room.handlePull}
         />
 
-        {consensus.phase === "voting" ? (
+        {room.consensus.phase === "voting" ? (
           <ReadyCard
-            selfReady={self.presence?.votingComplete ?? false}
-            readyCount={readyCount}
-            presentCount={presentMemberIds.size}
-            isHost={isHost}
-            noConsensusYet={noConsensusYet}
-            finalizeDisabled={finalizeDisabled}
-            onToggleReady={handleToggleReady}
-            onFinalizeNow={handleFinalizeNow}
+            selfReady={room.self.presence?.votingComplete ?? false}
+            readyCount={room.readyCount}
+            presentCount={room.presentMemberIds.size}
+            isHost={room.isHost}
+            noConsensusYet={room.noConsensusYet}
+            finalizeDisabled={room.finalizeDisabled}
+            onToggleReady={room.handleToggleReady}
+            onFinalizeNow={room.handleFinalizeNow}
           />
         ) : null}
       </section>
@@ -615,13 +185,6 @@ function RoomCodeCard({ code }: { code: string }) {
     </Card>
   );
 }
-
-type PullState =
-  | { kind: "ready"; pulling: boolean }
-  | { kind: "no-profile" }
-  | { kind: "loading" }
-  | { kind: "error"; message: string }
-  | { kind: "idle" };
 
 function PullControl({
   locked,
