@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { AvatarStack, Button, Card } from "./ui";
 
@@ -33,6 +33,16 @@ export function HeroCard({
   const shouldSpin = animateOnMount && spinningTitles.length >= 1;
   const [tickIndex, setTickIndex] = useState(0);
   const [settled, setSettled] = useState(!shouldSpin);
+  const heroRef = useRef<HTMLDivElement | null>(null);
+
+  // Pull the hero into view on mount when this client just observed the
+  // voting->decided transition. Otherwise the moment lands below the fold
+  // for rooms with many candidates. Skipped for late joiners (animateOnMount
+  // false) so navigation doesn't yank them around.
+  useEffect(() => {
+    if (!animateOnMount) return;
+    heroRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [animateOnMount]);
 
   useEffect(() => {
     if (!shouldSpin) {
@@ -75,7 +85,7 @@ export function HeroCard({
     : { initial: false as const };
 
   return (
-    <motion.div {...motionProps}>
+    <motion.div ref={heroRef} {...motionProps}>
       <Card className="border-accent/40 bg-accent/[0.04]">
         <Card.Eyebrow>Tonight&apos;s pick</Card.Eyebrow>
         <Card.Body>
