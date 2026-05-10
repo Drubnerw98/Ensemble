@@ -96,4 +96,24 @@ describe("AvatarStack", () => {
     const img = container.querySelector("img");
     expect(img?.getAttribute("title")).toBe("Alice");
   });
+
+  it("does not apply rounded-full to the highlight wrapper (crush bug regression)", () => {
+    const userInfoById = new Map([
+      ["u1", { name: "Alice", avatarUrl: undefined }],
+      ["u2", { name: "Bob", avatarUrl: undefined }],
+      ["u3", { name: "Carol", avatarUrl: undefined }],
+    ]);
+    const { container } = render(
+      <AvatarStack
+        userIds={["u1", "u2", "u3"]}
+        userInfoById={userInfoById}
+        max={3}
+        size="md"
+        highlight
+      />,
+    );
+    const wrapper = container.firstElementChild;
+    expect(wrapper).not.toBeNull();
+    expect(wrapper?.className).not.toContain("rounded-full");
+  });
 });

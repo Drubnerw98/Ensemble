@@ -43,7 +43,7 @@ export function AvatarStack({
   const offsetClass = SIZE_OFFSET[size];
 
   const wrapperRing = highlight
-    ? "ring-2 ring-accent/50 ring-offset-2 ring-offset-bg rounded-full"
+    ? "ring-2 ring-accent/50 ring-offset-2 ring-offset-bg rounded-md"
     : "";
 
   return (
@@ -53,7 +53,7 @@ export function AvatarStack({
           {visible.map((id, i) => {
             const info = userInfoById.get(id);
             const offset = i > 0 ? offsetClass : "";
-            const baseClass = `${sizeClass} shrink-0 rounded-full border border-bg ${offset}`;
+            const baseClass = `${sizeClass} shrink-0 rounded-full border border-bg object-cover ${offset}`;
             return (
               <motion.span
                 key={id}
