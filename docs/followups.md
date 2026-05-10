@@ -18,6 +18,8 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-05-09 — Consider extracting consensus logic from SessionUI](#2026-05-09--consider-extracting-consensus-logic-from-sessionui)
   - [2026-05-09 — Voter avatars crush on candidate rows under multi-vote load](#2026-05-09--voter-avatars-crush-on-candidate-rows-under-multi-vote-load)
   - [2026-05-09 — Items-per-pull input shows pre-clamp value until storage round-trip](#2026-05-09--items-per-pull-input-shows-pre-clamp-value-until-storage-round-trip)
+  - [2026-05-10 — Integration coverage for the all-present-Done gating effect](#2026-05-10--integration-coverage-for-the-all-present-done-gating-effect)
+  - [2026-05-10 — Stale "void reference" comment above pullCandidates mutation](#2026-05-10--stale-void-reference-comment-above-pullcandidates-mutation)
 - [Resolved](#resolved)
 - [Abandoned](#abandoned)
 
@@ -210,6 +212,43 @@ Note (2026-05-09): all three currently have SVG favicons that follow a loose fam
 **Open questions:**
 
 - Does drub care enough about the brief visual mismatch to invest in a controlled-with-local-buffer pattern?
+
+### 2026-05-10 — Integration coverage for the all-present-Done gating effect
+
+**What:** The detection effect at `src/components/SessionUI.tsx` (post-finalize-voting, in the second `useEffect` after the hooks block) is the load-bearing change of the finalize-voting feature: it gates `lockConsensus` on `allPresentDone`. There is no automated test that exercises it. Verification today is the spec's manual two-browser script. Acceptable for MVP, but a regression here would silently revert the feature and a lint or refactor pass could break the early-return without any test catching it.
+
+**Why noticed:** Surfaced during the post-implementation review of the finalize-voting feature on 2026-05-10. The reviewer flagged this as MVP-acceptable but called the gating effect "the load-bearing change of the whole feature" with one untested integration point. The spec at `docs/superpowers/specs/2026-05-10-finalize-voting-design.md` explicitly notes the test gap. The feature was friend-test driven (the auto-lock-on-first-cross was found too eager); a future-friend-test regression here would be expensive to debug without a guarding test.
+
+**Anchors:**
+
+- `src/components/SessionUI.tsx` (the detection `useEffect` that gates on `allPresentDone`, and the `allPresentDone` / `readyCount` `useMemo`s above it)
+- `docs/superpowers/specs/2026-05-10-finalize-voting-design.md` (spec acknowledges the gap)
+- `decisions.md` 2026-05-10 entry "Finalize-voting model" (the architectural call this test would protect)
+
+**What's been considered:**
+
+- Existing test infra (Vitest + happy-dom + RTL) does not mock Liveblocks rooms. Component tests cover ReadyCard in isolation but not the SessionUI wiring.
+- A pure unit test on a `useConsensusRoom` hook (after the connector-extraction followup lands) would be the natural seam: hook input is `{ phase, threshold, votesSnapshot, presentMemberIds, selfPresence, othersPresence }` and output is `{ shouldLock, evaluation, ... }`. Pure function, easy to test without Liveblocks.
+- A Liveblocks integration test using their test utils is heavier; not free but would also catch presence-related bugs in vote handler wrappers and reconsider self-reset.
+
+**Shape of work:** Probably folds into the `useConsensusRoom` extraction (`docs/followups.md:157-167`). Once the gating logic is a pure-function-shaped hook, write tests that drive it through the four state combinations: voting + not-all-done (no lock), voting + all-done + no winner (no lock, hint shown), voting + all-done + winner (lock fires once), decided (no-op). Estimate: 2 hours combined with the extraction, half of that on tests.
+
+**Open questions:**
+
+- Land alongside the connector extraction, or separately first as a Liveblocks-test-utils integration test?
+
+### 2026-05-10 — Stale "void reference" comment above pullCandidates mutation
+
+**What:** `src/components/SessionUI.tsx` has a comment block at lines 204-205 that reads `// Wired to the Pull button in Task 9. The void reference below // satisfies tsconfig's noUnusedLocals between this task and Task 9.`. The void reference it described was removed in commits `5eb55de` and `6471a61` when the Pull button actually shipped. The comment now refers to nothing.
+
+**Why noticed:** Flagged during the post-implementation review of the finalize-voting feature on 2026-05-10. Two-line delete, no behavior change. Worth catching during the next inline edit to that area.
+
+**Anchors:**
+
+- `src/components/SessionUI.tsx:204-205` (the stale comment block)
+- Commits `5eb55de`, `6471a61` (where the void reference was removed)
+
+**Shape of work:** Delete two lines. Trivial.
 
 ## Resolved
 
