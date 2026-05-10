@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { UserButton, useUser } from "@clerk/clerk-react";
+import { UserButton } from "@clerk/clerk-react";
 import {
   useMutation,
   useOthers,
@@ -10,6 +10,7 @@ import {
 import { LiveList, LiveObject } from "@liveblocks/client";
 import type { Candidate, ConsensusPhase, ThresholdRule } from "../lib/liveblocks";
 import { evaluate } from "../lib/consensus";
+import { normalizeTitle } from "../lib/candidates";
 import { AvatarStack, Button, Card } from "./ui";
 import { HeroCard } from "./HeroCard";
 import { ThresholdPicker } from "./ThresholdPicker";
@@ -24,7 +25,6 @@ export function SessionUI({ code }: { code: string }) {
   const consensus = useStorage((root) => root.consensus);
   const others = useOthers();
   const self = useSelf();
-  const { user } = useUser();
   const navigate = useNavigate();
 
   const userInfoById = useMemo(() => {
@@ -107,18 +107,40 @@ export function SessionUI({ code }: { code: string }) {
   }, [votes, self.id]);
 
   const addCandidate = useMutation(
-    ({ storage }, title: string) => {
+    ({ storage, self }, title: string) => {
       if (storage.get("consensus").get("phase") !== "voting") return;
-      storage.get("candidates").push(
+      const cleanedTitle = title.trim();
+      if (!cleanedTitle) return;
+      const list = storage.get("candidates");
+      const normalized = normalizeTitle(cleanedTitle);
+      // Dedup: append puller to addedBy if title already present.
+      for (let i = 0; i < list.length; i++) {
+        const existing = list.get(i);
+        if (!existing) continue;
+        if (normalizeTitle(existing.get("title")) !== normalized) continue;
+        const addedBy = existing.get("addedBy");
+        let alreadyAttributed = false;
+        for (let j = 0; j < addedBy.length; j++) {
+          if (addedBy.get(j) === self.id) {
+            alreadyAttributed = true;
+            break;
+          }
+        }
+        if (!alreadyAttributed) addedBy.push(self.id);
+        return;
+      }
+      list.push(
         new LiveObject<Candidate>({
           id: crypto.randomUUID(),
-          title,
-          addedBy: user?.id ?? "unknown",
+          title: cleanedTitle,
+          type: "unknown",
+          year: null,
+          addedBy: new LiveList([self.id]),
           addedAt: Date.now(),
         }),
       );
     },
-    [user?.id],
+    [],
   );
 
   const removeCandidate = useMutation(({ storage }, id: string) => {
