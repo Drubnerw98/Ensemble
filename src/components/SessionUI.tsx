@@ -246,7 +246,6 @@ export function SessionUI({ code }: { code: string }) {
     const clamped = Math.max(1, Math.min(20, Math.floor(n)));
     c.set("candidatesPerPull", clamped);
   }, []);
-  void setCandidatesPerPull;
 
   const lockConsensus = useMutation(
     (
@@ -358,10 +357,12 @@ export function SessionUI({ code }: { code: string }) {
         <RoomCodeCard code={code} />
 
         <ThresholdPicker
-          threshold={consensus.threshold}
+          threshold={consensus.threshold as ThresholdRule}
           isHost={isHost}
           presentCount={presentMemberIds.size}
           onChange={setThreshold}
+          candidatesPerPull={consensus.candidatesPerPull}
+          onCandidatesPerPullChange={setCandidatesPerPull}
         />
 
         {consensus.phase === "decided" && consensus.winnerId ? (
