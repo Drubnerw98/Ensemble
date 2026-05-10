@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Card } from "./ui";
 import type { ThresholdRule } from "../lib/liveblocks";
 
@@ -24,10 +24,17 @@ export function ThresholdPicker({
   onCandidatesPerPullChange: (n: number) => void;
 }) {
   const [perPullDraft, setPerPullDraft] = useState(String(candidatesPerPull));
+  const [prevCandidatesPerPull, setPrevCandidatesPerPull] = useState(candidatesPerPull);
 
-  useEffect(() => {
+  // Derived state: when the prop changes (e.g., storage round-trips a clamped
+  // value back), reset the local draft. React pattern for derived state that
+  // satisfies react-hooks/set-state-in-effect: call setState during render
+  // when the upstream value changes, discarding the current render and
+  // immediately re-rendering with both state values updated.
+  if (prevCandidatesPerPull !== candidatesPerPull) {
+    setPrevCandidatesPerPull(candidatesPerPull);
     setPerPullDraft(String(candidatesPerPull));
-  }, [candidatesPerPull]);
+  }
 
   function commitPerPull() {
     const n = Number(perPullDraft);
