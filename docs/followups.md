@@ -12,15 +12,15 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-05-09 — Session-arrival animation](#2026-05-09--session-arrival-animation)
   - [2026-05-09 — Mobile-first density variants](#2026-05-09--mobile-first-density-variants)
   - [2026-05-09 — Light theme](#2026-05-09--light-theme)
-  - [2026-05-09 — Extract shared UserInfo type](#2026-05-09--extract-shared-userinfo-type)
   - [2026-05-09 — Disabled controls need accessible reason](#2026-05-09--disabled-controls-need-accessible-reason)
-  - [2026-05-09 — Consider extracting consensus logic from SessionUI](#2026-05-09--consider-extracting-consensus-logic-from-sessionui)
-  - [2026-05-09 — Voter avatars crush on candidate rows under multi-vote load](#2026-05-09--voter-avatars-crush-on-candidate-rows-under-multi-vote-load)
-  - [2026-05-09 — Items-per-pull input shows pre-clamp value until storage round-trip](#2026-05-09--items-per-pull-input-shows-pre-clamp-value-until-storage-round-trip)
   - [2026-05-10 — Integration coverage for the all-present-Done gating effect](#2026-05-10--integration-coverage-for-the-all-present-done-gating-effect)
-  - [2026-05-10 — Stale "void reference" comment above pullCandidates mutation](#2026-05-10--stale-void-reference-comment-above-pullcandidates-mutation)
 - [Resolved](#resolved)
   - [2026-05-09 — Winning candidate row pulse on consensus transition](#2026-05-09--winning-candidate-row-pulse-on-consensus-transition-1)
+  - [2026-05-09 — Voter avatars crush on candidate rows under multi-vote load](#2026-05-09--voter-avatars-crush-on-candidate-rows-under-multi-vote-load)
+  - [2026-05-09 — Items-per-pull input shows pre-clamp value until storage round-trip](#2026-05-09--items-per-pull-input-shows-pre-clamp-value-until-storage-round-trip)
+  - [2026-05-09 — Extract shared UserInfo type](#2026-05-09--extract-shared-userinfo-type)
+  - [2026-05-09 — Consider extracting consensus logic from SessionUI](#2026-05-09--consider-extracting-consensus-logic-from-sessionui)
+  - [2026-05-10 — Stale "void reference" comment above pullCandidates mutation](#2026-05-10--stale-void-reference-comment-above-pullcandidates-mutation)
 - [Abandoned](#abandoned)
 
 ## Active
@@ -113,19 +113,6 @@ Note (2026-05-09): all three currently have SVG favicons that follow a loose fam
 - Single source of truth (`prefers-color-scheme`) or user-toggleable?
 - Does Resonance or Constellation already have a light theme to harmonize against?
 
-### 2026-05-09 — Extract shared UserInfo type
-
-**What:** The `UserInfo = { name?: string; avatarUrl?: string }` type is currently defined in two places: `src/components/SessionUI.tsx` and `src/components/HeroCard.tsx`. They are identical today but will silently diverge if one is extended (e.g., adding a `color` field for display).
-
-**Why noticed:** Flagged during the code-quality review of HeroCard during the consensus-flow implementation. Acceptable at the current scale, but worth extracting to a shared module the next time a third consumer needs it. Most natural home is `src/lib/types.ts` or a `src/components/types.ts` if the module stays presentation-scoped.
-
-**Anchors:**
-
-- `src/components/SessionUI.tsx` (one definition)
-- `src/components/HeroCard.tsx` (other definition)
-
-**Shape of work:** Trivial. One file added, two files modified to import. No behavior change.
-
 ### 2026-05-09 — Disabled controls need accessible reason
 
 **What:** The candidates input, Add button, Vote/Voted button, and remove button all become `disabled` when `consensus.phase === "decided"`. That blocks interaction correctly, but a screen-reader user hears only "dimmed, unavailable" with no context for *why*. An `aria-describedby` pointing to a hidden status message ("voting locked, room has decided") would close the gap.
@@ -137,63 +124,6 @@ Note (2026-05-09): all three currently have SVG favicons that follow a loose fam
 - `src/components/SessionUI.tsx` (CandidatesPanel input + Add button, CandidateRow Vote/Voted + remove buttons)
 
 **Shape of work:** Add a hidden status node, point each disabled control's `aria-describedby` at it. One commit, no visual change.
-
-### 2026-05-09 — Consider extracting consensus logic from SessionUI
-
-**What:** `src/components/SessionUI.tsx` is now ~470 lines and holds both presentation (the room layout) and connector logic (consensus storage reads, transition detection, host migration, threshold mutations, reconsider). The connector half could move into a `useConsensusRoom` hook or similar so SessionUI is just the layout.
-
-**Why noticed:** Flagged at multiple points during the consensus-flow implementation reviews as a "trend, not a crisis." File size grew naturally as planned tasks landed; the consensus state machine became the dominant resident of the file. Worth deciding whether to split before the next major feature.
-
-**Anchors:**
-
-- `src/components/SessionUI.tsx` (the file in question)
-
-**Shape of work:** Probably an `src/hooks/useConsensusRoom.ts` returning `{ consensus, isHost, setThreshold, reconsider, ... }`. SessionUI shrinks to render-only. No behavior change, just relocation. Could land alongside step 8 (mobile breakpoints) or wait for step 9 (deploy).
-
-**Open questions:**
-
-- Hook or context? Hook is simpler; context would let nested components subscribe selectively.
-
-### 2026-05-09 — Voter avatars crush on candidate rows under multi-vote load
-
-**What:** When multiple voters cast votes on the same candidate, the avatar stack on the candidate row visually crushes (avatars squish, layout gets awkward). Drub flagged it during a session where multiple votes were cast.
-
-**Why noticed:** Drub raised it as a side note while planning the next build phase. Likely a layout issue inside `CandidateRow` (the row uses `flex items-center` with the title set to `min-w-0 truncate` and the right-side cluster `shrink-0`, but the AvatarStack itself may be losing aspect ratio or horizontal space when many voters land at once). Probably worse on narrow viewports.
-
-**Anchors:**
-
-- `src/components/SessionUI.tsx` — `CandidateRow` (the `<li>` row layout and AvatarStack placement)
-- `src/components/ui/AvatarStack.tsx` — the stack primitive itself, in case the squish is intrinsic to the component rather than the row layout
-
-**Shape of work:** Reproduce locally with 4-5 simulated votes and inspect. Likely a `min-w-0` missing somewhere, an `aspect-square` not being held on the avatar img, or insufficient room when title text takes most of the row. Could fold into the mobile breakpoints + polish pass (build step 8) since it touches the same surface, or fix sooner if the Resonance candidate population work surfaces it on every row.
-
-**Open questions:**
-
-- Is the crush happening only at narrow widths or also on desktop?
-- Are the avatars losing aspect ratio (rendered as ovals) or just visually overlapping more aggressively than intended?
-
-### 2026-05-09 — Items-per-pull input shows pre-clamp value until storage round-trip
-
-**What:** The host's "Items per pull" number input in `ThresholdPicker` is controlled, but UI-side clamping is enforced only by the HTML `min={1} max={20}` attributes (which the browser respects for spinner buttons but not for arbitrary keyboard input). When a host types `0` or `25` directly, the input shows that value until the `setCandidatesPerPull` mutation clamps it server-side and the Liveblocks round-trip pushes the clamped value back to the prop. Brief visual mismatch; no incorrect storage state.
-
-**Why noticed:** Surfaced during the final cross-cutting review of the Resonance candidate population implementation on 2026-05-09. Reviewer flagged it as a Minor UX rough edge. An earlier mid-implementation fix attempt to add a `>= 1` guard in `handlePerPullChange` was reverted because it broke the controlled-input typing flow (intermediate keystroke values would be rejected). The current state is acceptable for MVP because the stored value is always correct.
-
-**Anchors:**
-
-- `src/components/ThresholdPicker.tsx` (`handlePerPullChange`, the input element)
-- `src/components/SessionUI.tsx` (`setCandidatesPerPull` mutation, which clamps to 1-20)
-
-**What's been considered:**
-
-- Naive `>= 1` guard rejects typing flow (clearing the input emits 0 and stops further onChange propagation).
-- A debounced or onBlur-only commit would feel sluggish for what should be an instant control.
-- A controlled local-state mirror with deferred clamp on commit is the standard React pattern for this case but adds component state Card.Eyebrow doesn't currently have.
-
-**Shape of work:** Either accept the rough edge or add a thin local-state layer in the input that defers clamping until blur/Enter. Likely lands during build step 8 (mobile + polish) when input UX gets a deliberate review.
-
-**Open questions:**
-
-- Does drub care enough about the brief visual mismatch to invest in a controlled-with-local-buffer pattern?
 
 ### 2026-05-10 — Integration coverage for the all-present-Done gating effect
 
@@ -219,19 +149,6 @@ Note (2026-05-09): all three currently have SVG favicons that follow a loose fam
 
 - Land alongside the connector extraction, or separately first as a Liveblocks-test-utils integration test?
 
-### 2026-05-10 — Stale "void reference" comment above pullCandidates mutation
-
-**What:** `src/components/SessionUI.tsx` has a comment block at lines 204-205 that reads `// Wired to the Pull button in Task 9. The void reference below // satisfies tsconfig's noUnusedLocals between this task and Task 9.`. The void reference it described was removed in commits `5eb55de` and `6471a61` when the Pull button actually shipped. The comment now refers to nothing.
-
-**Why noticed:** Flagged during the post-implementation review of the finalize-voting feature on 2026-05-10. Two-line delete, no behavior change. Worth catching during the next inline edit to that area.
-
-**Anchors:**
-
-- `src/components/SessionUI.tsx:204-205` (the stale comment block)
-- Commits `5eb55de`, `6471a61` (where the void reference was removed)
-
-**Shape of work:** Delete two lines. Trivial.
-
 ## Resolved
 
 (items move here when ticketed and shipped, or fixed inline)
@@ -243,6 +160,56 @@ Note (2026-05-09): all three currently have SVG favicons that follow a loose fam
 **Why noticed:** Surfaced during the final cross-cutting code review of the consensus flow implementation on 2026-05-09. Spec line 166 of `docs/superpowers/specs/2026-05-09-consensus-flow-design.md` describes the pulse explicitly. Plan task 11 covered the spin animation and slide-in but did not include a row-pulse implementation.
 
 **Resolved 2026-05-10 (commit `ec7b8c6`):** Shipped a 600ms saffron box-shadow pulse on the winning `CandidateRow`. Gated on `observedTransition` (returned from `useConsensusRoom`) so late joiners do not replay it. Keyframe returns to resting at 100% so the class can stay applied without leaving a permanent visual. Chosen to fire in parallel with the hero card slide-in rather than sequentially since hero already runs a 1.2s spin reveal that occupies the moment; a sequential pulse would have either preceded the phase flip (impossible) or come after a 1.2s lull (dead time). Implementation: `@keyframes row-pulse` and `.animate-row-pulse` in `src/styles/globals.css`, plumbed via `justDecidedId: string | null` prop on `CandidatesPanel`.
+
+### 2026-05-09 — Voter avatars crush on candidate rows under multi-vote load
+
+**What:** When multiple voters cast votes on the same candidate, the avatar stack on the candidate row visually crushes (avatars squish, layout gets awkward). Drub flagged it during a session where multiple votes were cast.
+
+**Why noticed:** Drub raised it as a side note while planning the next build phase. Likely a layout issue inside `CandidateRow` (the row uses `flex items-center` with the title set to `min-w-0 truncate` and the right-side cluster `shrink-0`, but the AvatarStack itself may be losing aspect ratio or horizontal space when many voters land at once). Probably worse on narrow viewports.
+
+**Anchors:**
+
+- `src/components/SessionUI.tsx` — `CandidateRow` (the `<li>` row layout and AvatarStack placement)
+- `src/components/ui/AvatarStack.tsx` — the stack primitive itself, in case the squish is intrinsic to the component rather than the row layout
+
+**Resolved 2026-05-10 (audit verification):** `AvatarStack` now wraps in `inline-flex` rather than `flex` (`src/components/ui/AvatarStack.tsx:53-54`) with a load-bearing comment explaining that `flex` defaults to full-width in a block parent, making the highlight ring trace the full container and producing the crush. `inline-flex` sizes to content. Verified during the post-mobile-polish audit pass; no regression seen with multi-vote scenarios.
+
+### 2026-05-09 — Items-per-pull input shows pre-clamp value until storage round-trip
+
+**What:** The host's "Items per pull" number input in `ThresholdPicker` is controlled, but UI-side clamping is enforced only by the HTML `min={1} max={20}` attributes (which the browser respects for spinner buttons but not for arbitrary keyboard input). When a host types `0` or `25` directly, the input shows that value until the `setCandidatesPerPull` mutation clamps it server-side and the Liveblocks round-trip pushes the clamped value back to the prop. Brief visual mismatch; no incorrect storage state.
+
+**Why noticed:** Surfaced during the final cross-cutting review of the Resonance candidate population implementation on 2026-05-09. Reviewer flagged it as a Minor UX rough edge. An earlier mid-implementation fix attempt to add a `>= 1` guard in `handlePerPullChange` was reverted because it broke the controlled-input typing flow (intermediate keystroke values would be rejected). The current state is acceptable for MVP because the stored value is always correct.
+
+**Anchors:**
+
+- `src/components/ThresholdPicker.tsx` (`handlePerPullChange`, the input element)
+- `src/components/SessionUI.tsx` (`setCandidatesPerPull` mutation, which clamps to 1-20)
+
+**Resolved 2026-05-10 (audit verification):** `ThresholdPicker.tsx:26-50` now uses a local `perPullDraft` string state mirrored from the `candidatesPerPull` prop via the React render-time derived-state pattern (setState during render when the upstream value changes). Commit happens on blur/Enter via `commitPerPull`, snapping back to the current prop on invalid input. The brief visual mismatch is gone; no controlled-input typing regression.
+
+### 2026-05-09 — Extract shared UserInfo type
+
+**What:** The `UserInfo = { name?: string; avatarUrl?: string }` type is currently defined in two places: `src/components/SessionUI.tsx` and `src/components/HeroCard.tsx`. They are identical today but will silently diverge if one is extended (e.g., adding a `color` field for display).
+
+**Why noticed:** Flagged during the code-quality review of HeroCard during the consensus-flow implementation. Acceptable at the current scale, but worth extracting to a shared module the next time a third consumer needs it. Most natural home is `src/lib/types.ts` or a `src/components/types.ts` if the module stays presentation-scoped.
+
+**Resolved 2026-05-10 (commit `5232f4e`):** The audit found the duplication had worsened from two places to three (`src/hooks/useConsensusRoom.ts:25` exported, `src/components/HeroCard.tsx:5`, `src/components/ui/AvatarStack.tsx:3`). New `src/lib/types.ts` is the single source. All three files now import from there. The previous re-export from `useConsensusRoom` was dropped so callers can't keep importing through the hook accidentally; SessionUI updated to import `UserInfo` directly from `../lib/types`.
+
+### 2026-05-09 — Consider extracting consensus logic from SessionUI
+
+**What:** `src/components/SessionUI.tsx` is now ~470 lines and holds both presentation (the room layout) and connector logic (consensus storage reads, transition detection, host migration, threshold mutations, reconsider). The connector half could move into a `useConsensusRoom` hook or similar so SessionUI is just the layout.
+
+**Why noticed:** Flagged at multiple points during the consensus-flow implementation reviews as a "trend, not a crisis." File size grew naturally as planned tasks landed; the consensus state machine became the dominant resident of the file. Worth deciding whether to split before the next major feature.
+
+**Resolved 2026-05-10 (commit `5867211`, plus earlier hook landing):** The connector half landed earlier as `src/hooks/useConsensusRoom.ts` (the hook returning `{ consensus, isHost, setThreshold, reconsider, ... }` shape proposed in the original entry). The presentation half landed in this audit pass: `CandidatesPanel` and `CandidateRow` lifted into their own files (`src/components/CandidatesPanel.tsx`, `src/components/CandidateRow.tsx`), and `formatMeta`/`formatPullers` moved to `src/lib/format.ts`. SessionUI is now 237 lines, presentation-only.
+
+### 2026-05-10 — Stale "void reference" comment above pullCandidates mutation
+
+**What:** `src/components/SessionUI.tsx` has a comment block at lines 204-205 that reads `// Wired to the Pull button in Task 9. The void reference below // satisfies tsconfig's noUnusedLocals between this task and Task 9.`. The void reference it described was removed in commits `5eb55de` and `6471a61` when the Pull button actually shipped. The comment now refers to nothing.
+
+**Why noticed:** Flagged during the post-implementation review of the finalize-voting feature on 2026-05-10. Two-line delete, no behavior change. Worth catching during the next inline edit to that area.
+
+**Resolved 2026-05-10 (audit verification):** Comment is no longer present in `SessionUI.tsx`; was removed during one of the earlier cleanup passes. Verified with `grep -n "void reference" src/components/SessionUI.tsx` returning empty.
 
 ## Abandoned
 
