@@ -2,7 +2,8 @@ import { useCallback, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth, UserButton } from "@clerk/clerk-react";
 import { useConsensusRoom, type UserInfo, type PullState } from "../hooks/useConsensusRoom";
-import type { ThresholdRule } from "../lib/liveblocks";
+import type { ReactionKind, ThresholdRule } from "../lib/liveblocks";
+import { ReactionRow, type ReactionState } from "./ReactionRow";
 import { searchTmdb, type TmdbResult } from "../lib/tmdb";
 import { AvatarStack, Button, Card } from "./ui";
 import { CandidateAutocomplete } from "./CandidateAutocomplete";
@@ -11,6 +12,13 @@ import { ReadyCard } from "./ReadyCard";
 import { ThresholdPicker } from "./ThresholdPicker";
 
 const EMPTY_VOTER_LIST: readonly string[] = [];
+
+const EMPTY_REACTION_STATE: ReactionState = {
+  thumbsUp: { count: 0, selfReacted: false },
+  heart: { count: 0, selfReacted: false },
+  thinking: { count: 0, selfReacted: false },
+  yikes: { count: 0, selfReacted: false },
+};
 
 export function SessionUI({ code }: { code: string }) {
   const navigate = useNavigate();
@@ -91,6 +99,7 @@ export function SessionUI({ code }: { code: string }) {
           userInfoById={room.userInfoById}
           votedCandidateIds={room.votedCandidateIds}
           pullersByCandidateId={room.pullersByCandidateId}
+          reactionsByCandidateId={room.reactionsByCandidateId}
           locked={room.consensus.phase === "decided"}
           justDecidedId={
             room.observedTransition ? room.consensus.winnerId : null
@@ -101,6 +110,7 @@ export function SessionUI({ code }: { code: string }) {
           onVote={room.handleVote}
           onUnvote={room.handleUnvote}
           onPull={room.handlePull}
+          onToggleReaction={room.toggleReaction}
           isSessionLocked={room.consensus.phase === "decided"}
         />
 
@@ -242,6 +252,7 @@ function CandidatesPanel({
   userInfoById,
   votedCandidateIds,
   pullersByCandidateId,
+  reactionsByCandidateId,
   locked,
   justDecidedId,
   pullState,
@@ -250,6 +261,7 @@ function CandidatesPanel({
   onVote,
   onUnvote,
   onPull,
+  onToggleReaction,
   isSessionLocked,
 }: {
   candidates: readonly {
@@ -263,6 +275,7 @@ function CandidatesPanel({
   userInfoById: ReadonlyMap<string, UserInfo>;
   votedCandidateIds: ReadonlySet<string>;
   pullersByCandidateId: ReadonlyMap<string, readonly string[]>;
+  reactionsByCandidateId: ReadonlyMap<string, ReactionState>;
   locked: boolean;
   justDecidedId: string | null;
   pullState: PullState;
@@ -271,6 +284,7 @@ function CandidatesPanel({
   onVote: (id: string) => void;
   onUnvote: (id: string) => void;
   onPull: () => void;
+  onToggleReaction: (candidateId: string, kind: ReactionKind) => void;
   isSessionLocked: boolean;
 }) {
   const { getToken } = useAuth();
@@ -346,6 +360,7 @@ function CandidatesPanel({
                 candidate={c}
                 voterIds={votes.get(c.id) ?? EMPTY_VOTER_LIST}
                 pullerIds={pullersByCandidateId.get(c.id) ?? EMPTY_VOTER_LIST}
+                reactions={reactionsByCandidateId.get(c.id) ?? EMPTY_REACTION_STATE}
                 userInfoById={userInfoById}
                 voted={votedCandidateIds.has(c.id)}
                 locked={locked}
@@ -353,6 +368,7 @@ function CandidatesPanel({
                 onVote={onVote}
                 onUnvote={onUnvote}
                 onRemove={onRemove}
+                onToggleReaction={onToggleReaction}
               />
             ))}
           </ul>
@@ -366,6 +382,7 @@ function CandidateRow({
   candidate,
   voterIds,
   pullerIds,
+  reactions,
   userInfoById,
   voted,
   locked,
@@ -373,6 +390,7 @@ function CandidateRow({
   onVote,
   onUnvote,
   onRemove,
+  onToggleReaction,
 }: {
   candidate: {
     readonly id: string;
@@ -383,6 +401,7 @@ function CandidateRow({
   };
   voterIds: readonly string[];
   pullerIds: readonly string[];
+  reactions: ReactionState;
   userInfoById: ReadonlyMap<string, UserInfo>;
   voted: boolean;
   locked: boolean;
@@ -390,68 +409,76 @@ function CandidateRow({
   onVote: (id: string) => void;
   onUnvote: (id: string) => void;
   onRemove: (id: string) => void;
+  onToggleReaction: (candidateId: string, kind: ReactionKind) => void;
 }) {
   const meta = formatMeta(candidate.type, candidate.year);
   const pullerCaption = formatPullers(pullerIds, userInfoById);
 
   return (
     <li
-      className={`flex flex-col gap-2 rounded-md border border-border bg-bg/40 px-3 py-2 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-3${
+      className={`flex flex-col gap-2 rounded-md border border-border bg-bg/40 px-3 py-2 text-sm${
         justDecided ? " animate-row-pulse" : ""
       }`}
     >
-      <div className="flex min-w-0 flex-1 items-center gap-3">
-        {candidate.posterUrl ? (
-          <img
-            src={candidate.posterUrl}
-            alt=""
-            className="h-[72px] w-12 shrink-0 rounded-md object-cover"
-          />
-        ) : (
-          <div className="h-[72px] w-12 shrink-0 rounded-md bg-white/10" />
-        )}
-        <div className="min-w-0">
-          <div className="flex items-baseline gap-2">
-            <span className="min-w-0 truncate">{candidate.title}</span>
-            {meta ? (
-              <span className="shrink-0 text-xs text-text-muted">{meta}</span>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          {candidate.posterUrl ? (
+            <img
+              src={candidate.posterUrl}
+              alt=""
+              className="h-[72px] w-12 shrink-0 rounded-md object-cover"
+            />
+          ) : (
+            <div className="h-[72px] w-12 shrink-0 rounded-md bg-white/10" />
+          )}
+          <div className="min-w-0">
+            <div className="flex items-baseline gap-2">
+              <span className="min-w-0 truncate">{candidate.title}</span>
+              {meta ? (
+                <span className="shrink-0 text-xs text-text-muted">{meta}</span>
+              ) : null}
+            </div>
+            {pullerCaption ? (
+              <div className="mt-0.5 text-xs text-text-muted">{pullerCaption}</div>
             ) : null}
           </div>
-          {pullerCaption ? (
-            <div className="mt-0.5 text-xs text-text-muted">{pullerCaption}</div>
-          ) : null}
+        </div>
+        <div className="flex w-full items-center justify-between gap-3 sm:w-auto sm:shrink-0 sm:justify-end">
+          <AvatarStack
+            userIds={voterIds}
+            userInfoById={userInfoById}
+            size="md"
+            max={3}
+            showCount
+            highlight={voted}
+          />
+          <div className="flex items-center gap-3">
+            <Button
+              size="sm"
+              variant={voted ? "primary" : "secondary"}
+              disabled={locked}
+              onClick={() =>
+                voted ? onUnvote(candidate.id) : onVote(candidate.id)
+              }
+            >
+              {voted ? "Voted" : "Vote"}
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={locked}
+              onClick={() => onRemove(candidate.id)}
+            >
+              remove
+            </Button>
+          </div>
         </div>
       </div>
-      <div className="flex w-full items-center justify-between gap-3 sm:w-auto sm:shrink-0 sm:justify-end">
-        <AvatarStack
-          userIds={voterIds}
-          userInfoById={userInfoById}
-          size="md"
-          max={3}
-          showCount
-          highlight={voted}
-        />
-        <div className="flex items-center gap-3">
-          <Button
-            size="sm"
-            variant={voted ? "primary" : "secondary"}
-            disabled={locked}
-            onClick={() =>
-              voted ? onUnvote(candidate.id) : onVote(candidate.id)
-            }
-          >
-            {voted ? "Voted" : "Vote"}
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            disabled={locked}
-            onClick={() => onRemove(candidate.id)}
-          >
-            remove
-          </Button>
-        </div>
-      </div>
+      <ReactionRow
+        state={reactions}
+        disabled={locked}
+        onToggle={(kind) => onToggleReaction(candidate.id, kind)}
+      />
     </li>
   );
 }

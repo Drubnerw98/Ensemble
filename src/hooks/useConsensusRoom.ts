@@ -8,13 +8,25 @@ import {
 } from "@liveblocks/react/suspense";
 import { LiveList, LiveObject } from "@liveblocks/client";
 import { useAuth } from "@clerk/clerk-react";
-import type { Candidate, ConsensusPhase, ThresholdRule } from "../lib/liveblocks";
+import type { Candidate, ConsensusPhase, ReactionKind, Reactions, ThresholdRule } from "../lib/liveblocks";
+import type { ReactionState } from "../components/ReactionRow";
 import { evaluate } from "../lib/consensus";
 import { normalizeTitle, pickCandidates, type PickedCandidate } from "../lib/candidates";
 import { searchTmdb, pickBestMatch } from "../lib/tmdb";
 import { useResonanceProfile } from "./useResonanceProfile";
 
 export type UserInfo = { name?: string; avatarUrl?: string };
+
+function reactionStateFor(
+  list: readonly string[] | undefined,
+  selfId: string | undefined,
+): { count: number; selfReacted: boolean } {
+  if (!list) return { count: 0, selfReacted: false };
+  return {
+    count: list.length,
+    selfReacted: selfId !== undefined && list.includes(selfId),
+  };
+}
 
 export type PullState =
   | { kind: "ready"; pulling: boolean }
@@ -160,6 +172,50 @@ export function useConsensusRoom() {
     }
     return map;
   }, [candidates]);
+
+  const reactions = useStorage((root) => root.reactions);
+
+  const reactionsByCandidateId = useMemo(() => {
+    const map = new Map<string, ReactionState>();
+    if (!reactions) return map;
+    for (const [candidateId, entry] of reactions) {
+      map.set(candidateId, {
+        thumbsUp: reactionStateFor(entry.thumbsUp as unknown as readonly string[], self.id),
+        heart: reactionStateFor(entry.heart as unknown as readonly string[], self.id),
+        thinking: reactionStateFor(entry.thinking as unknown as readonly string[], self.id),
+        yikes: reactionStateFor(entry.yikes as unknown as readonly string[], self.id),
+      });
+    }
+    return map;
+  }, [reactions, self.id]);
+
+  const toggleReaction = useMutation(
+    ({ storage, self }, candidateId: string, kind: ReactionKind) => {
+      if (storage.get("consensus").get("phase") !== "voting") return;
+      const reactionsMap = storage.get("reactions");
+      // Old rooms without reactions storage: graceful no-op.
+      if (!reactionsMap) return;
+      let entry = reactionsMap.get(candidateId);
+      if (!entry) {
+        entry = new LiveObject<Reactions>({
+          thumbsUp: new LiveList<string>([]),
+          heart: new LiveList<string>([]),
+          thinking: new LiveList<string>([]),
+          yikes: new LiveList<string>([]),
+        });
+        reactionsMap.set(candidateId, entry);
+      }
+      const list = entry.get(kind);
+      for (let i = list.length - 1; i >= 0; i--) {
+        if (list.get(i) === self.id) {
+          list.delete(i);
+          return;
+        }
+      }
+      list.push(self.id);
+    },
+    [],
+  );
 
   const addCandidate = useMutation(
     (
@@ -514,6 +570,7 @@ export function useConsensusRoom() {
     votesSnapshot,
     votedCandidateIds,
     pullersByCandidateId,
+    reactionsByCandidateId,
     spinningTitles,
     // finalize-voting
     allPresentDone,
@@ -536,5 +593,6 @@ export function useConsensusRoom() {
     reconsider,
     setThreshold,
     setCandidatesPerPull,
+    toggleReaction,
   } as const;
 }
