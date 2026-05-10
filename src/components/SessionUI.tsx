@@ -237,6 +237,16 @@ export function SessionUI({ code }: { code: string }) {
     c.set("threshold", rule);
   }, []);
 
+  const setCandidatesPerPull = useMutation(({ storage, self }, n: number) => {
+    const c = storage.get("consensus");
+    if (self.id !== c.get("hostId")) return;
+    if (c.get("phase") !== "voting") return;
+    if (!Number.isFinite(n)) return;
+    const clamped = Math.max(1, Math.min(20, Math.floor(n)));
+    c.set("candidatesPerPull", clamped);
+  }, []);
+  void setCandidatesPerPull;
+
   const lockConsensus = useMutation(
     (
       { storage },
