@@ -247,8 +247,12 @@ export function useConsensusRoom() {
       },
     ) => {
       if (storage.get("consensus").get("phase") !== "voting") return;
-      const cleanedTitle = title.trim();
-      if (!cleanedTitle) return;
+      // Defense-in-depth against direct websocket writes that bypass the
+      // <input maxLength={120}> client cap. String() guards a non-string
+      // payload from a tampered client; .slice(0, 200) clamps absurdly
+      // long titles before they hit storage.
+      const cleanedTitle = String(title).trim().slice(0, 200);
+      if (cleanedTitle.length === 0) return;
       const list = storage.get("candidates");
       const normalized = normalizeTitle(cleanedTitle);
       // Dedup: append self to addedBy if the title is already in the list.
@@ -298,7 +302,11 @@ export function useConsensusRoom() {
       if (storage.get("consensus").get("phase") !== "voting") return;
       const list = storage.get("candidates");
       for (const pick of picked) {
-        const normalized = normalizeTitle(pick.title);
+        // Same defense-in-depth as addCandidate: a tampered client could
+        // invoke this mutation directly with arbitrary payloads.
+        const cleanedTitle = String(pick.title).trim().slice(0, 200);
+        if (cleanedTitle.length === 0) continue;
+        const normalized = normalizeTitle(cleanedTitle);
         let merged = false;
         for (let i = 0; i < list.length; i++) {
           const existing = list.get(i);
@@ -320,7 +328,7 @@ export function useConsensusRoom() {
         list.push(
           new LiveObject<Candidate>({
             id: crypto.randomUUID(),
-            title: pick.title,
+            title: cleanedTitle,
             type: pick.type,
             year: pick.year,
             posterUrl: pick.posterUrl,
