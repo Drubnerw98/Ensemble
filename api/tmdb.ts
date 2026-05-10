@@ -1,11 +1,36 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { verifyToken } from "@clerk/backend";
+import { Ratelimit } from "@upstash/ratelimit";
+import { Redis } from "@upstash/redis";
 
 const clerkSecretKey = process.env.CLERK_SECRET_KEY;
+const upstashUrl = process.env.UPSTASH_REDIS_REST_URL;
+const upstashToken = process.env.UPSTASH_REDIS_REST_TOKEN;
 
-if (!clerkSecretKey) {
-  throw new Error("CLERK_SECRET_KEY must be set in the environment");
+if (!clerkSecretKey || !upstashUrl || !upstashToken) {
+  throw new Error(
+    "CLERK_SECRET_KEY, UPSTASH_REDIS_REST_URL, and UPSTASH_REDIS_REST_TOKEN must be set in the environment",
+  );
 }
+
+// Same Upstash instance and pattern as liveblocks-auth.ts. Limits are higher
+// here because autocomplete fires per-keystroke (debounced) so a normal
+// session legitimately spends more requests against TMDB than against
+// Liveblocks token mint. A signed-in user otherwise drains TMDB quota and
+// Vercel function budget.
+const redis = new Redis({ url: upstashUrl, token: upstashToken });
+const ipLimiter = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(60, "1 m"),
+  prefix: "ensemble:tmdb:ip",
+  analytics: false,
+});
+const userLimiter = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(30, "1 m"),
+  prefix: "ensemble:tmdb:user",
+  analytics: false,
+});
 
 const PROD_ORIGIN = "https://ensemble-sigma.vercel.app";
 const PREVIEW_PATTERN =
@@ -84,16 +109,40 @@ export default async function handler(
     return res.status(403).json({ error: "Forbidden" });
   }
 
+  // Per-IP rate limit before any external call (Clerk verify, TMDB fetch).
+  // Refuses the request rather than running it and failing to record.
+  const forwardedFor = req.headers["x-forwarded-for"];
+  const ip =
+    (Array.isArray(forwardedFor) ? forwardedFor[0] : forwardedFor)
+      ?.split(",")[0]
+      ?.trim() ?? "unknown";
+  const ipCheck = await ipLimiter.limit(ip);
+  if (!ipCheck.success) {
+    return res.status(429).json({ error: "Too many requests" });
+  }
+
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith("Bearer ")) {
     return res.status(401).json({ error: "Missing bearer token" });
   }
   const sessionToken = authHeader.slice("Bearer ".length);
 
+  let userId: string;
   try {
-    await verifyToken(sessionToken, { secretKey: clerkSecretKey });
+    const verified = await verifyToken(sessionToken, {
+      secretKey: clerkSecretKey,
+    });
+    userId = verified.sub;
   } catch {
     return res.status(401).json({ error: "Invalid session" });
+  }
+
+  // Per-user rate limit, layered with per-IP. Same Upstash instance as
+  // liveblocks-auth so the per-deployment quota is shared, but separate
+  // prefixes mean the two endpoints don't share a counter.
+  const userCheck = await userLimiter.limit(userId);
+  if (!userCheck.success) {
+    return res.status(429).json({ error: "Too many requests" });
   }
 
   const body = req.body as { query?: unknown } | undefined;
