@@ -80,7 +80,7 @@ export function Home() {
                   onChange={(e) => setJoinCode(e.target.value)}
                   placeholder="ABC123"
                   maxLength={6}
-                  className="w-full rounded-md border border-border bg-transparent px-3 py-2 font-mono text-center text-lg tracking-[0.4em] uppercase text-text placeholder:text-text-muted/40 focus:border-border-strong focus:outline-none"
+                  className="min-h-11 w-full rounded-md border border-border bg-transparent px-3 py-2 font-mono text-center text-lg tracking-[0.4em] uppercase text-text placeholder:text-text-muted/40 focus:border-border-strong focus:outline-none sm:min-h-0"
                 />
                 {joinError && (
                   <p className="mt-2 text-xs text-warn">{joinError}</p>
