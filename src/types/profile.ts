@@ -1,7 +1,6 @@
-// Narrow client-side mirror of Resonance's TasteProfile shape — only the
-// fields Ensemble currently consumes. Resonance returns more (library,
-// recommendations, mediaAffinities, etc.); we widen this type as later
-// steps actually need them, instead of dragging the full surface in now.
+// Narrow client-side mirror of Resonance's TasteProfile shape. Widened
+// in the Resonance candidate population pass to expose library and
+// recommendations alongside themes and archetypes.
 
 export interface TasteTheme {
   label: string;
@@ -12,7 +11,15 @@ export interface TasteArchetype {
   label: string;
 }
 
+export interface ResonanceItem {
+  title: string;
+  type?: string;
+  year?: number;
+}
+
 export interface ResonanceProfileSnapshot {
   themes: TasteTheme[];
   archetypes: TasteArchetype[];
+  library: ResonanceItem[];
+  recommendations: ResonanceItem[];
 }

@@ -1,4 +1,7 @@
-import type { ResonanceProfileSnapshot } from "../types/profile";
+import type {
+  ResonanceItem,
+  ResonanceProfileSnapshot,
+} from "../types/profile";
 
 export class ApiError extends Error {
   constructor(
@@ -10,16 +13,22 @@ export class ApiError extends Error {
   }
 }
 
-// Read at call time so tests / preview builds can stub the env var without
-// fighting module load order.
 function getApiBase(): string {
   return import.meta.env.VITE_RESONANCE_API_URL ?? "";
+}
+
+interface RawProfileItem {
+  title?: unknown;
+  type?: unknown;
+  year?: unknown;
 }
 
 interface RawProfileExport {
   profile: {
     themes: { label: string; weight: number }[];
     archetypes: { label: string }[];
+    library?: RawProfileItem[];
+    recommendations?: RawProfileItem[];
   };
 }
 
@@ -54,5 +63,21 @@ export async function fetchMyProfile(
       weight: t.weight,
     })),
     archetypes: raw.profile.archetypes.map((a) => ({ label: a.label })),
+    library: normalizeItems(raw.profile.library),
+    recommendations: normalizeItems(raw.profile.recommendations),
   };
+}
+
+function normalizeItems(raw: RawProfileItem[] | undefined): ResonanceItem[] {
+  if (!Array.isArray(raw)) return [];
+  const out: ResonanceItem[] = [];
+  for (const item of raw) {
+    if (typeof item?.title !== "string") continue;
+    out.push({
+      title: item.title,
+      type: typeof item.type === "string" ? item.type : undefined,
+      year: typeof item.year === "number" ? item.year : undefined,
+    });
+  }
+  return out;
 }
