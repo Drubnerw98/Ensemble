@@ -44,7 +44,7 @@ export function Session() {
     <LiveblocksProvider authEndpoint={authEndpoint}>
       <RoomProvider
         id={roomId}
-        initialPresence={{}}
+        initialPresence={{ votingComplete: false }}
         initialStorage={{
           candidates: new LiveList([]),
           votes: new LiveMap(),

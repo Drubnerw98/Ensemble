@@ -45,7 +45,7 @@ export type Consensus = {
 // what shape our room data has so they're typed end-to-end.
 declare global {
   interface Liveblocks {
-    Presence: Record<string, never>;
+    Presence: { votingComplete: boolean };
     Storage: {
       candidates: LiveList<LiveObject<Candidate>>;
       votes: LiveMap<string, LiveList<string>>;
