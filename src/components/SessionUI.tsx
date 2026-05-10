@@ -610,7 +610,7 @@ function CandidatesPanel({
             placeholder="Add a title…"
             maxLength={120}
             disabled={locked}
-            className="flex-1 rounded-md border border-border bg-transparent px-3 py-2 text-sm text-text placeholder:text-text-muted/60 focus:border-border-strong focus:outline-none"
+            className="flex-1 rounded-md border border-border bg-transparent px-3 py-2 text-sm text-text placeholder:text-text-muted/60 focus:border-border-strong focus:outline-none min-h-11 sm:min-h-0"
           />
           <Button
             type="submit"
