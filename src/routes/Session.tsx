@@ -55,6 +55,7 @@ export function Session() {
             winnerId: null,
             tiedIds: [],
             decidedAt: null,
+            candidatesPerPull: 5,
           }),
         }}
       >
