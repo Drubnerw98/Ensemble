@@ -159,6 +159,7 @@ These are drub's principles, demonstrated working in Resonance and now applied t
 21. Items per pull: host-configurable, default 5.
 22. Mobile breakpoint strategy: single breakpoint at sm (640px).
 23. Touch targets: 44px on mobile via Button primitive shim.
+24. Finalize-voting: per-user Done flag in Presence, all-present-Done auto-finalizes, host has Finalize-now override.
 
 **Next step**: Deploy and real-user test (build step 9). Ship to Vercel, run a session with a friend.
 

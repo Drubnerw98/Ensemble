@@ -325,3 +325,17 @@ The `Why` line in each entry is what an interviewer will hear from drub when ask
 **Tradeoff accepted**: Rows feel slightly taller on mobile than they would with the desktop sizes. Fits the stacked-row decision: the row is already taller on mobile because content stacks, so the buttons being taller is consistent rather than out of place.
 
 **Would revisit if**: Real-user testing shows the mobile layout feels cramped despite the bump (suggests deeper density work), or accessibility audit finds 44px is insufficient (then bump to 48px to match Material).
+
+---
+
+## 2026-05-10 — Finalize-voting model: per-user Done flag, all-present-Done auto-finalizes
+
+**Considered**: **Live-tally with auto-lock on first cross** (status quo, found too eager during friend-test), **host-only Finalize button** (less peer-to-peer), **per-user Done flag with auto-finalize when all are Done plus host override** (chosen).
+
+**Decision**: Per-user Done flag stored in Liveblocks Presence as `votingComplete: boolean`. The voting-to-decided transition fires only when all present users have marked themselves Done. Casting or un-voting resets the editing user's Done flag. Host has a "Finalize now" override that bypasses the all-done gate.
+
+**Why**: Friend-test directly demonstrated the auto-lock model was too eager: with two users in a unanimous-threshold room, the first to vote on a candidate the other had already voted for caused an instant lock, and the second user never got to express their full preferences. Approval voting wants users to mark several picks; the trigger needs to be a deliberate gesture, not a state-derived auto-fire. Per-user Done preserves the live tally (no hidden-then-reveal model), keeps voting peer-to-peer (every member's gesture matters), and lets the room collectively decide when to evaluate. Done lives in Presence (per-user, ephemeral) rather than Storage so each client owns their own flag without coordinated cross-client writes. Reconsider triggers a local self-reset when each client observes the decided-to-voting transition. Host's Finalize-now override fits the existing room-creator-is-host pattern.
+
+**Tradeoff accepted**: One more gesture per voting round than the auto-lock model. Acceptable because the friend test directly demonstrated the auto-lock model was too eager, and "I'm ready" is a natural group-decision gesture.
+
+**Would revisit if**: Real users find the gesture redundant in trusted small-group sessions (unlikely given the friend-test feedback), or the asymmetry between vote (live) and Done (gesture) creates confusion about what's committed.
