@@ -6,6 +6,7 @@ import {
   useOthers,
   useSelf,
   useStorage,
+  useUpdateMyPresence,
 } from "@liveblocks/react/suspense";
 import { LiveList, LiveObject } from "@liveblocks/client";
 import type { Candidate, ConsensusPhase, ThresholdRule } from "../lib/liveblocks";
@@ -14,6 +15,7 @@ import { normalizeTitle, pickCandidates, type PickedCandidate } from "../lib/can
 import { useResonanceProfile } from "../hooks/useResonanceProfile";
 import { AvatarStack, Button, Card } from "./ui";
 import { HeroCard } from "./HeroCard";
+import { ReadyCard } from "./ReadyCard";
 import { ThresholdPicker } from "./ThresholdPicker";
 
 type UserInfo = { name?: string; avatarUrl?: string };
@@ -85,11 +87,48 @@ export function SessionUI({ code }: { code: string }) {
     }
   }
 
+  const updateMyPresence = useUpdateMyPresence();
+
   const votesSnapshot = useMemo(() => {
     const map = new Map<string, readonly string[]>();
     for (const [id, voters] of votes) map.set(id, voters);
     return map;
   }, [votes]);
+
+  const allPresentDone = useMemo(() => {
+    if (!self.presence?.votingComplete) return false;
+    for (const other of others) {
+      if (!other.id) continue;
+      if (!other.presence?.votingComplete) return false;
+    }
+    return true;
+  }, [self.presence?.votingComplete, others]);
+
+  const currentEvaluation = useMemo(
+    () =>
+      evaluate(
+        votesSnapshot,
+        consensus.threshold as ThresholdRule,
+        presentMemberIds,
+      ),
+    [votesSnapshot, consensus.threshold, presentMemberIds],
+  );
+
+  const noConsensusYet =
+    consensus.phase === "voting" &&
+    allPresentDone &&
+    currentEvaluation.winnerId === null;
+
+  const finalizeDisabled = currentEvaluation.winnerId === null;
+
+  const readyCount = useMemo(() => {
+    let count = self.presence?.votingComplete ? 1 : 0;
+    for (const other of others) {
+      if (!other.id) continue;
+      if (other.presence?.votingComplete) count += 1;
+    }
+    return count;
+  }, [self.presence?.votingComplete, others]);
 
   const spinningTitles = useMemo(
     () =>
@@ -256,6 +295,30 @@ export function SessionUI({ code }: { code: string }) {
     }
   }, []);
 
+  const handleVote = (candidateId: string) => {
+    castVote(candidateId);
+    updateMyPresence({ votingComplete: false });
+  };
+
+  const handleUnvote = (candidateId: string) => {
+    unvote(candidateId);
+    updateMyPresence({ votingComplete: false });
+  };
+
+  const handleToggleReady = (ready: boolean) => {
+    updateMyPresence({ votingComplete: ready });
+  };
+
+  const handleFinalizeNow = () => {
+    if (!isHost) return;
+    if (consensus.phase !== "voting") return;
+    if (currentEvaluation.winnerId === null) return;
+    lockConsensus({
+      winnerId: currentEvaluation.winnerId,
+      tiedIds: currentEvaluation.tiedIds,
+    });
+  };
+
   const setThreshold = useMutation(({ storage, self }, rule: ThresholdRule) => {
     const c = storage.get("consensus");
     if (self.id !== c.get("hostId")) return;
@@ -320,10 +383,15 @@ export function SessionUI({ code }: { code: string }) {
 
   useEffect(() => {
     if (consensus.phase !== "voting") return;
+    if (!allPresentDone) return;
     // Liveblocks widens nested LiveObject fields to Lson via the
-    // [key: string]: Lson | undefined index signature on Consensus —
+    // [key: string]: Lson | undefined index signature on Consensus,
     // re-narrow to the original ThresholdRule shape.
-    const result = evaluate(votesSnapshot, consensus.threshold as ThresholdRule, presentMemberIds);
+    const result = evaluate(
+      votesSnapshot,
+      consensus.threshold as ThresholdRule,
+      presentMemberIds,
+    );
     if (result.winnerId === null) return;
     lockConsensus({
       winnerId: result.winnerId,
@@ -334,6 +402,7 @@ export function SessionUI({ code }: { code: string }) {
     consensus.threshold,
     votesSnapshot,
     presentMemberIds,
+    allPresentDone,
     lockConsensus,
   ]);
 
@@ -446,10 +515,23 @@ export function SessionUI({ code }: { code: string }) {
           }
           onAdd={addCandidate}
           onRemove={removeCandidate}
-          onVote={castVote}
-          onUnvote={unvote}
+          onVote={handleVote}
+          onUnvote={handleUnvote}
           onPull={handlePull}
         />
+
+        {consensus.phase === "voting" ? (
+          <ReadyCard
+            selfReady={self.presence?.votingComplete ?? false}
+            readyCount={readyCount}
+            presentCount={presentMemberIds.size}
+            isHost={isHost}
+            noConsensusYet={noConsensusYet}
+            finalizeDisabled={finalizeDisabled}
+            onToggleReady={handleToggleReady}
+            onFinalizeNow={handleFinalizeNow}
+          />
+        ) : null}
       </section>
     </main>
   );
