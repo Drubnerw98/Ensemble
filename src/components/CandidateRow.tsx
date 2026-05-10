@@ -1,7 +1,9 @@
 import { AvatarStack, Button } from "./ui";
 import { ReactionRow, type ReactionState } from "./ReactionRow";
+import { RoomFitChips } from "./RoomFitChips";
 import type { ReactionKind } from "../lib/liveblocks";
 import type { UserInfo } from "../lib/types";
+import type { WhyChip } from "../lib/whyForRoom";
 import { formatMeta, formatPullers } from "../lib/format";
 
 type CandidateView = {
@@ -17,6 +19,7 @@ type Props = {
   voterIds: readonly string[];
   pullerIds: readonly string[];
   reactions: ReactionState;
+  whyChips: readonly WhyChip[];
   userInfoById: ReadonlyMap<string, UserInfo>;
   voted: boolean;
   locked: boolean;
@@ -34,6 +37,7 @@ export function CandidateRow({
   voterIds,
   pullerIds,
   reactions,
+  whyChips,
   userInfoById,
   voted,
   locked,
@@ -125,6 +129,7 @@ export function CandidateRow({
           </div>
         </div>
       </div>
+      <RoomFitChips chips={whyChips} userInfoById={userInfoById} />
       <ReactionRow
         state={reactions}
         disabled={locked}

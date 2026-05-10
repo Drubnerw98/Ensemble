@@ -25,6 +25,7 @@ interface RawProfileItem {
   mediaType?: unknown;
   type?: unknown;
   year?: unknown;
+  tasteTags?: unknown;
 }
 
 interface RawProfileExport {
@@ -96,10 +97,16 @@ function normalizeItems(raw: RawProfileItem[] | undefined): ResonanceItem[] {
         : typeof item.type === "string"
           ? item.type
           : undefined;
+    const tasteTags = Array.isArray(item.tasteTags)
+      ? item.tasteTags.filter(
+          (t): t is string => typeof t === "string" && t.length > 0,
+        )
+      : undefined;
     out.push({
       title: item.title,
       type: rawType,
       year: typeof item.year === "number" ? item.year : undefined,
+      tasteTags,
     });
   }
   return out;

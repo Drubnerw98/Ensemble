@@ -14,6 +14,11 @@ export type PickedCandidate = {
   title: string;
   type: CandidateType;
   year: number | null;
+  // Carried through from Resonance so the cross-attribution matcher
+  // can score this candidate against every member's profile snapshot.
+  // Manual entries default to []; null is reserved for "we don't know"
+  // which would muddy the matcher.
+  tasteTags: string[];
 };
 
 const LIBRARY_SHARE = 0.6;
@@ -124,6 +129,7 @@ function normalize(item: ResonanceItem): PickedCandidate {
     title: item.title,
     type: parseType(item.type),
     year: typeof item.year === "number" ? item.year : null,
+    tasteTags: item.tasteTags ?? [],
   };
 }
 

@@ -93,6 +93,7 @@ export function SessionUI({ code }: { code: string }) {
           votedCandidateIds={room.votedCandidateIds}
           pullersByCandidateId={room.pullersByCandidateId}
           reactionsByCandidateId={room.reactionsByCandidateId}
+          whyChipsByCandidateId={room.whyChipsByCandidateId}
           votesNeeded={room.thresholdVotesNeeded}
           showThresholdMeter={room.consensus.phase === "voting"}
           locked={room.consensus.phase === "decided"}

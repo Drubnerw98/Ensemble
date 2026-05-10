@@ -6,6 +6,20 @@ The `Why` line in each entry is what an interviewer will hear from drub when ask
 
 ---
 
+## 2026-05-10 — Member profiles in Storage for cross-attribution
+
+**Considered**: **Liveblocks Storage `LiveMap<userId, MemberProfileSnapshot>`** (every member's themes + archetypes mirror into a Storage map at first pull, visible to every other member for the room's lifetime), **Liveblocks Presence** (each member's profile snapshot lives in their own Presence; vanishes on disconnect), **client-side fetch on demand** (when rendering a chip, the client fetches each present member's profile from Resonance via the bearer token).
+
+**Decision**: Storage `LiveMap<userId, LiveObject<MemberProfileSnapshot>>`, written on first pull, frozen at capture.
+
+**Why**: Cross-attribution is the social-agreement signal the product is built on — "this candidate matches Alex's *interior fracture* theme, even though Alex didn't pull it." That signal has to survive Alex dropping mid-session. Presence gets cleared on disconnect, so a member who drops takes their attribution with them and the room loses the merged-profile artifact that justifies the whole feature. Fetch-on-demand was wrong for two reasons: it requires every client to know every other member's bearer token (which the auth model deliberately doesn't allow — Resonance reads are user-scoped to the requester), and it adds N round-trips per render. Storage costs one snapshot row per member per session — a few KB at most, bounded by present membership — and the merged-profile artifact persists for the room's lifetime, which also cleanly unlocks the future "Group taste DNA card" surface.
+
+**Tradeoff accepted**: A schema-shape change (new `memberProfiles` LiveMap), accepted because ephemeral sessions mean no migration is needed. Profile snapshots are session-frozen — a member who refines their Resonance profile mid-session won't see the room's view of them update. This is intentional: the alternative (refresh-on-refinement) would churn cross-attribution chips on every Resonance edit and turn the room into an unstable view of the merged group taste. Frozen snapshots are also the right semantics for a future analytics surface ("what taste DNA picked tonight's movie"). Member themes/archetypes are now visible to other session members; this is a deliberate exposure inherent to the feature, acceptable for the social premise of the product but worth naming because Resonance treats profiles as private-to-the-user by default.
+
+**Would revisit if**: Storage payload per member grows beyond a few KB (the matcher only needs theme + archetype labels today; if cross-attribution starts mining library/favorites the snapshot grows and the cost-benefit shifts toward server-side matching). Mid-session refresh-on-refinement becomes a clear product need (e.g. real users keep saying "I added a theme but the room still thinks I'm the old me"). Or non-Resonance guest mode lands (per the auth-scope "Would revisit if") — guests have no profile to snapshot and the chip semantics need rethinking.
+
+---
+
 ## 2026-05-04 — Project name: Ensemble
 
 **Considered**: Conjunction (astronomical alignment of celestial bodies — direct thematic continuation of Constellation), Ensemble (French for "together," multiple performers as a unified whole), Convergence (multiple things flowing to a point), Harmonic (waves combining in phase, picks up Resonance's sensory thread).

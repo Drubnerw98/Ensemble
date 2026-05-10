@@ -15,6 +15,12 @@ export interface ResonanceItem {
   title: string;
   type?: string;
   year?: number;
+  // Resonance tags items with paraphrased taste labels (e.g. "interior
+  // fracture", "burden carrying"). Used by the cross-attribution
+  // matcher to find which OTHER members' theme/archetype labels also
+  // describe a candidate. Optional so legacy fixtures and lo-fi manual
+  // entries (which carry no tags) parse cleanly.
+  tasteTags?: string[];
 }
 
 export interface ResonanceProfileSnapshot {

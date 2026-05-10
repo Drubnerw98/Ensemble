@@ -9,9 +9,17 @@ import {
 } from "@liveblocks/react/suspense";
 import { LiveList, LiveObject } from "@liveblocks/client";
 import { useAuth } from "@clerk/clerk-react";
-import type { Candidate, ConsensusPhase, ReactionKind, Reactions, ThresholdRule } from "../lib/liveblocks";
+import type {
+  Candidate,
+  ConsensusPhase,
+  MemberProfileSnapshot,
+  ReactionKind,
+  Reactions,
+  ThresholdRule,
+} from "../lib/liveblocks";
 import type { ReactionState } from "../components/ReactionRow";
 import type { UserInfo } from "../lib/types";
+import { whyForRoom, type WhyChip } from "../lib/whyForRoom";
 import { evaluate, votesNeeded } from "../lib/consensus";
 import {
   countAvailableForPull,
@@ -192,6 +200,23 @@ export function useConsensusRoom() {
   }, [candidates]);
 
   const reactions = useStorage((root) => root.reactions);
+  const memberProfiles = useStorage((root) => root.memberProfiles);
+
+  // Snapshot map for the cross-attribution matcher. Re-narrowed from
+  // the LiveMap-as-readonly-shape that useStorage hands us. Built once
+  // per memberProfiles change so every candidate's matcher reads from
+  // the same map instance (memo stability).
+  const memberProfilesByUserId = useMemo(() => {
+    const map = new Map<string, MemberProfileSnapshot>();
+    if (!memberProfiles) return map;
+    for (const [userId, snapshot] of memberProfiles) {
+      // Liveblocks widens nested LiveObject reads to a plain readonly
+      // shape via the [key: string]: Lson index signature. Re-narrow
+      // to the original snapshot type for consumers.
+      map.set(userId, snapshot as unknown as MemberProfileSnapshot);
+    }
+    return map;
+  }, [memberProfiles]);
 
   const reactionsByCandidateId = useMemo(() => {
     const map = new Map<string, ReactionState>();
@@ -206,6 +231,21 @@ export function useConsensusRoom() {
     }
     return map;
   }, [reactions, self.id]);
+
+  const whyChipsByCandidateId = useMemo(() => {
+    const map = new Map<string, readonly WhyChip[]>();
+    for (const c of candidates) {
+      const tags = c.tasteTags as readonly string[] | undefined;
+      const addedBy = pullersByCandidateId.get(c.id) ?? [];
+      const chips = whyForRoom(
+        { tasteTags: tags ?? null },
+        memberProfilesByUserId,
+        addedBy,
+      );
+      if (chips.length > 0) map.set(c.id, chips);
+    }
+    return map;
+  }, [candidates, pullersByCandidateId, memberProfilesByUserId]);
 
   const toggleReaction = useMutation(
     ({ storage, self }, candidateId: string, kind: ReactionKind) => {
@@ -284,6 +324,10 @@ export function useConsensusRoom() {
           year: meta?.year ?? null,
           posterUrl: meta?.posterUrl ?? null,
           tmdbId: meta?.tmdbId ?? null,
+          // Manual entries carry no Resonance taste tags. The cross-
+          // attribution matcher returns no chips on an empty array,
+          // which is the correct UX (we have no signal to attribute).
+          tasteTags: [],
           addedBy: new LiveList([self.id]),
           addedAt: Date.now(),
         }),
@@ -333,6 +377,7 @@ export function useConsensusRoom() {
             year: pick.year,
             posterUrl: pick.posterUrl,
             tmdbId: pick.tmdbId,
+            tasteTags: [...pick.tasteTags],
             addedBy: new LiveList([self.id]),
             addedAt: Date.now(),
           }),
@@ -341,6 +386,41 @@ export function useConsensusRoom() {
     },
     [],
   );
+
+  // Write this client's profile snapshot to memberProfiles on first
+  // pull. Idempotent — overwriting a present entry is fine but we
+  // skip when one already exists so the snapshot stays frozen at the
+  // first capture (a member's Resonance can evolve mid-session, but
+  // the room's view stays stable; tradeoff documented in
+  // decisions.md 2026-05-10 entry on cross-attribution).
+  type SnapshotPayload = {
+    themes: { label: string; weight: number }[];
+    archetypes: { label: string }[];
+  };
+  const writeMemberProfileSnapshot = useMutation(
+    ({ storage, self }, payload: SnapshotPayload) => {
+      const profilesMap = storage.get("memberProfiles");
+      // Old rooms without memberProfiles storage: graceful no-op.
+      if (!profilesMap) return;
+      if (profilesMap.get(self.id)) return;
+      // The MemberProfileSnapshot index signature widens every property
+      // read back to `Lson | undefined`, so the LiveObject constructor
+      // can't narrow `payload.themes` from the inferred union back to
+      // the concrete shape. Cast at the construction boundary so the
+      // payload type stays honest at the call site.
+      profilesMap.set(
+        self.id,
+        new LiveObject<MemberProfileSnapshot>({
+          userId: self.id,
+          themes: payload.themes,
+          archetypes: payload.archetypes,
+          capturedAt: Date.now(),
+        } as MemberProfileSnapshot),
+      );
+    },
+    [],
+  );
+
   const [pulling, setPulling] = useState(false);
 
   const handlePull = async () => {
@@ -348,6 +428,20 @@ export function useConsensusRoom() {
     if (consensus.phase !== "voting") return;
     setPulling(true);
     try {
+      // Capture this member's profile snapshot so other clients can
+      // cross-attribute later candidates against it. Idempotent at
+      // the storage layer — a no-op on subsequent pulls. Done before
+      // the pick so even if pickCandidates returns nothing (pool
+      // exhausted) the snapshot is recorded for matching against
+      // candidates other members will pull.
+      writeMemberProfileSnapshot({
+        themes: profile.data.themes.map((t) => ({
+          label: t.label,
+          weight: t.weight,
+        })),
+        archetypes: profile.data.archetypes.map((a) => ({ label: a.label })),
+      });
+
       // Exclude titles already in the room so a repeat pull returns new
       // items from the user's library/recs instead of dedup-no-ops.
       const excluded = new Set<string>();
@@ -607,6 +701,7 @@ export function useConsensusRoom() {
     votedCandidateIds,
     pullersByCandidateId,
     reactionsByCandidateId,
+    whyChipsByCandidateId,
     spinningTitles,
     // finalize-voting
     allPresentDone,

@@ -8,6 +8,7 @@ import { searchTmdb, type TmdbResult } from "../lib/tmdb";
 import type { ReactionKind } from "../lib/liveblocks";
 import type { UserInfo } from "../lib/types";
 import type { PullState } from "../hooks/useConsensusRoom";
+import type { WhyChip } from "../lib/whyForRoom";
 
 const EMPTY_VOTER_LIST: readonly string[] = [];
 
@@ -17,6 +18,8 @@ const EMPTY_REACTION_STATE: ReactionState = {
   thinking: { count: 0, selfReacted: false },
   yikes: { count: 0, selfReacted: false },
 };
+
+const EMPTY_WHY_CHIPS: readonly WhyChip[] = [];
 
 type CandidateView = {
   readonly id: string;
@@ -40,6 +43,7 @@ type Props = {
   votedCandidateIds: ReadonlySet<string>;
   pullersByCandidateId: ReadonlyMap<string, readonly string[]>;
   reactionsByCandidateId: ReadonlyMap<string, ReactionState>;
+  whyChipsByCandidateId: ReadonlyMap<string, readonly WhyChip[]>;
   votesNeeded: number;
   showThresholdMeter: boolean;
   locked: boolean;
@@ -61,6 +65,7 @@ export function CandidatesPanel({
   votedCandidateIds,
   pullersByCandidateId,
   reactionsByCandidateId,
+  whyChipsByCandidateId,
   votesNeeded,
   showThresholdMeter,
   locked,
@@ -137,6 +142,7 @@ export function CandidatesPanel({
                 voterIds={votes.get(c.id) ?? EMPTY_VOTER_LIST}
                 pullerIds={pullersByCandidateId.get(c.id) ?? EMPTY_VOTER_LIST}
                 reactions={reactionsByCandidateId.get(c.id) ?? EMPTY_REACTION_STATE}
+                whyChips={whyChipsByCandidateId.get(c.id) ?? EMPTY_WHY_CHIPS}
                 userInfoById={userInfoById}
                 voted={votedCandidateIds.has(c.id)}
                 locked={locked}

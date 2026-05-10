@@ -69,28 +69,15 @@ The same regex lives in `src/lib/sessionCode.ts` and `api/liveblocks-auth.ts`. T
 
 Declared in `src/lib/liveblocks.ts` via TypeScript module augmentation, so every Liveblocks hook is typed end-to-end.
 
-```ts
-interface Liveblocks {
-  Presence: Record<string, never>;
-  Storage: {
-    candidates: LiveList<LiveObject<Candidate>>;
-    votes: LiveMap<string, LiveList<string>>;
-  };
-  UserMeta: {
-    id: string;
-    info: { name: string; avatarUrl?: string };
-  };
-}
+The runtime shape evolves with the product; `src/lib/liveblocks.ts` is the source of truth. Today's storage roots are:
 
-type Candidate = {
-  id: string;
-  title: string;
-  addedBy: string;
-  addedAt: number;
-};
-```
+- `candidates: LiveList<LiveObject<Candidate>>` — the candidate pool. `Candidate` carries `addedBy` (LiveList of user ids for multi-attribution), `tasteTags` (carried from Resonance items at pull-time for cross-attribution matching), plus optional TMDB metadata.
+- `votes: LiveMap<string, LiveList<string>>` — keyed by candidate id, valued by a list of voter user ids.
+- `consensus: LiveObject<Consensus>` — host id, threshold rule, phase, winner, candidates-per-pull.
+- `reactions: LiveMap<string, LiveObject<Reactions>>` — per-candidate per-kind voter lists for the four-button reaction set.
+- `memberProfiles: LiveMap<string, LiveObject<MemberProfileSnapshot>>` — per-member snapshot of themes + archetypes, written on first pull and frozen for the room's lifetime. Drives the cross-attribution chips that show which OTHER members' profiles also describe a candidate.
 
-`votes` is keyed by candidate ID, valued by a list of user IDs who voted for that candidate. Schema is locked; mutations and UI are pending (build step 5).
+Presence carries `votingComplete: boolean` for the per-user finalize-voting Done flag.
 
 ## Routes
 

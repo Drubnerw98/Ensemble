@@ -85,7 +85,12 @@ describe("pickCandidates", () => {
       },
       1,
     );
-    expect(result[0]).toEqual({ title: "Dune", type: "movie", year: 2024 });
+    expect(result[0]).toEqual({
+      title: "Dune",
+      type: "movie",
+      year: 2024,
+      tasteTags: [],
+    });
   });
 
   it("filters out items with unrecognized types (e.g. videogame)", () => {
@@ -118,7 +123,9 @@ describe("pickCandidates", () => {
       },
       1,
     );
-    expect(result).toEqual([{ title: "Frieren", type: "anime", year: 2023 }]);
+    expect(result).toEqual([
+      { title: "Frieren", type: "anime", year: 2023, tasteTags: [] },
+    ]);
   });
 
   it("filters out books, games, music, podcasts", () => {
@@ -149,6 +156,7 @@ describe("pickCandidates", () => {
       title: "Yearless",
       type: "movie",
       year: null,
+      tasteTags: [],
     });
   });
 
