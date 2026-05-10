@@ -337,9 +337,14 @@ function CandidatesPanel({
         <PullControl locked={locked} pullState={pullState} onPull={onPull} />
 
         {candidates.length === 0 ? (
-          <p className="mt-4 text-sm text-text-muted">
-            No candidates yet. Add the first one or pull from your Resonance.
-          </p>
+          <div className="mt-6 flex flex-col items-center justify-center rounded-md border border-border/60 bg-bg/30 px-6 py-10 text-center">
+            <p className="font-display text-lg font-light tracking-tight text-text">
+              What are we watching tonight?
+            </p>
+            <p className="mt-2 max-w-sm text-sm text-text-muted">
+              Type a title above to search, or pull picks from your Resonance to start a list.
+            </p>
+          </div>
         ) : (
           <ul className="mt-4 space-y-2">
             {candidates.map((c) => (
