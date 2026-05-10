@@ -122,14 +122,28 @@ describe("ThresholdPicker items-per-pull", () => {
 
   it("emits onCandidatesPerPullChange with the new value", async () => {
     const onCandidatesPerPullChange = vi.fn<(n: number) => void>();
-    render(
+    let currentValue = 5;
+    const { rerender } = render(
       <ThresholdPicker
         threshold={{ kind: "unanimous" }}
         isHost={true}
         presentCount={3}
         onChange={() => {}}
-        candidatesPerPull={5}
-        onCandidatesPerPullChange={onCandidatesPerPullChange}
+        candidatesPerPull={currentValue}
+        onCandidatesPerPullChange={(n) => {
+          currentValue = n;
+          onCandidatesPerPullChange(n);
+          rerender(
+            <ThresholdPicker
+              threshold={{ kind: "unanimous" }}
+              isHost={true}
+              presentCount={3}
+              onChange={() => {}}
+              candidatesPerPull={n}
+              onCandidatesPerPullChange={onCandidatesPerPullChange}
+            />,
+          );
+        }}
       />,
     );
     const input = screen.getByLabelText(/items per pull/i);

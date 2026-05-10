@@ -106,7 +106,7 @@ export function ThresholdPicker({
                   type="number"
                   min={1}
                   max={20}
-                  defaultValue={candidatesPerPull}
+                  value={candidatesPerPull}
                   onChange={(e) => handlePerPullChange(e.target.value)}
                   className="w-16 rounded-md border border-border bg-transparent px-2 py-1 text-text focus:border-border-strong focus:outline-none"
                 />
