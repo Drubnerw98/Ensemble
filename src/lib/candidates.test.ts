@@ -44,10 +44,10 @@ describe("pickCandidates", () => {
       },
       5,
     );
-    // Expected: 1 library + 2 recs (the planned share) + 2 recs backfill
-    expect(result.length).toBe(5);
-    expect(result.map((p) => p.title)).toContain("L1");
-    expect(result.map((p) => p.title)).toContain("R1");
+    // count=5: libraryShare=3, recsShare=2. Library has only 1, so
+    // libraryShortBy=2 → recsBackfill=recs.slice(2,4)=["R3","R4"].
+    // Merged order: libraryHead, recsBackfill, recsHead, libraryBackfill.
+    expect(result.map((p) => p.title)).toEqual(["L1", "R3", "R4", "R1", "R2"]);
   });
 
   it("backfills from library when recs is short", () => {
@@ -58,8 +58,10 @@ describe("pickCandidates", () => {
       },
       5,
     );
-    expect(result.length).toBe(5);
-    expect(result.map((p) => p.title)).toContain("R1");
+    // count=5: libraryShare=3, recsShare=2. Recs has only 1, so
+    // recsShortBy=1 → libraryBackfill=library.slice(3,4)=["L4"].
+    // Merged order: libraryHead, recsBackfill (empty), recsHead, libraryBackfill.
+    expect(result.map((p) => p.title)).toEqual(["L1", "L2", "L3", "R1", "L4"]);
   });
 
   it("returns total available when both sides cannot meet count", () => {
