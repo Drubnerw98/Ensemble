@@ -12,7 +12,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-05-09 — Session-arrival animation](#2026-05-09--session-arrival-animation)
   - [2026-05-09 — Mobile-first density variants](#2026-05-09--mobile-first-density-variants)
   - [2026-05-09 — Light theme](#2026-05-09--light-theme)
-  - [2026-05-09 — Winning candidate row pulse on consensus transition](#2026-05-09--winning-candidate-row-pulse-on-consensus-transition)
   - [2026-05-09 — Extract shared UserInfo type](#2026-05-09--extract-shared-userinfo-type)
   - [2026-05-09 — Disabled controls need accessible reason](#2026-05-09--disabled-controls-need-accessible-reason)
   - [2026-05-09 — Consider extracting consensus logic from SessionUI](#2026-05-09--consider-extracting-consensus-logic-from-sessionui)
@@ -21,6 +20,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-05-10 — Integration coverage for the all-present-Done gating effect](#2026-05-10--integration-coverage-for-the-all-present-done-gating-effect)
   - [2026-05-10 — Stale "void reference" comment above pullCandidates mutation](#2026-05-10--stale-void-reference-comment-above-pullcandidates-mutation)
 - [Resolved](#resolved)
+  - [2026-05-09 — Winning candidate row pulse on consensus transition](#2026-05-09--winning-candidate-row-pulse-on-consensus-transition-1)
 - [Abandoned](#abandoned)
 
 ## Active
@@ -112,24 +112,6 @@ Note (2026-05-09): all three currently have SVG favicons that follow a loose fam
 
 - Single source of truth (`prefers-color-scheme`) or user-toggleable?
 - Does Resonance or Constellation already have a light theme to harmonize against?
-
-### 2026-05-09 — Winning candidate row pulse on consensus transition
-
-**What:** The consensus-flow spec calls for the winning candidate's row in the candidates list to "briefly pulse with the saffron accent" when the threshold first crosses. The hero card slide-in shipped, but the row-level pulse did not. Visual moment is slightly less rich than spec-described.
-
-**Why noticed:** Surfaced during the final cross-cutting code review of the consensus flow implementation on 2026-05-09. Spec line 166 of `docs/superpowers/specs/2026-05-09-consensus-flow-design.md` describes the pulse explicitly. Plan task 11 covered the spin animation and slide-in but did not include a row-pulse implementation. No test would have caught it because component tests don't exercise the live transition.
-
-**Anchors:**
-
-- `docs/superpowers/specs/2026-05-09-consensus-flow-design.md:166`
-- `src/components/SessionUI.tsx` (the `CandidateRow` component is where a `pulse` prop or `data-just-decided` attribute would live)
-- `src/components/HeroCard.tsx` (the existing slide-in animation; pulse should fire in concert)
-
-**Shape of work:** Add a `justDecided` prop or `data-just-won` attribute to the winning `CandidateRow`, hooked to the same `observedTransition` state that gates the hero card animation. CSS keyframe via Tailwind for a one-shot saffron pulse over ~600ms. Single component pass, no token changes.
-
-**Open questions:**
-
-- Should the row pulse fire in parallel with the hero card slide-in, or sequentially (row pulses first, then card animates in from below)?
 
 ### 2026-05-09 — Extract shared UserInfo type
 
@@ -253,6 +235,14 @@ Note (2026-05-09): all three currently have SVG favicons that follow a loose fam
 ## Resolved
 
 (items move here when ticketed and shipped, or fixed inline)
+
+### 2026-05-09 — Winning candidate row pulse on consensus transition
+
+**What:** The consensus-flow spec calls for the winning candidate's row in the candidates list to "briefly pulse with the saffron accent" when the threshold first crosses. The hero card slide-in shipped, but the row-level pulse did not. Visual moment is slightly less rich than spec-described.
+
+**Why noticed:** Surfaced during the final cross-cutting code review of the consensus flow implementation on 2026-05-09. Spec line 166 of `docs/superpowers/specs/2026-05-09-consensus-flow-design.md` describes the pulse explicitly. Plan task 11 covered the spin animation and slide-in but did not include a row-pulse implementation.
+
+**Resolved 2026-05-10 (commit `ec7b8c6`):** Shipped a 600ms saffron box-shadow pulse on the winning `CandidateRow`. Gated on `observedTransition` (returned from `useConsensusRoom`) so late joiners do not replay it. Keyframe returns to resting at 100% so the class can stay applied without leaving a permanent visual. Chosen to fire in parallel with the hero card slide-in rather than sequentially since hero already runs a 1.2s spin reveal that occupies the moment; a sequential pulse would have either preceded the phase flip (impossible) or come after a 1.2s lull (dead time). Implementation: `@keyframes row-pulse` and `.animate-row-pulse` in `src/styles/globals.css`, plumbed via `justDecidedId: string | null` prop on `CandidatesPanel`.
 
 ## Abandoned
 
