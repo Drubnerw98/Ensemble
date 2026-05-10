@@ -10,7 +10,7 @@ import {
 import { LiveList, LiveObject } from "@liveblocks/client";
 import type { Candidate, ConsensusPhase, ThresholdRule } from "../lib/liveblocks";
 import { evaluate } from "../lib/consensus";
-import { normalizeTitle, type PickedCandidate } from "../lib/candidates";
+import { normalizeTitle } from "../lib/candidates";
 import { AvatarStack, Button, Card } from "./ui";
 import { HeroCard } from "./HeroCard";
 import { ThresholdPicker } from "./ThresholdPicker";
@@ -147,47 +147,45 @@ export function SessionUI({ code }: { code: string }) {
     [],
   );
 
-  const pullCandidates = useMutation(
-    ({ storage, self }, picked: readonly PickedCandidate[]) => {
-      if (storage.get("consensus").get("phase") !== "voting") return;
-      const list = storage.get("candidates");
-      for (const pick of picked) {
-        const normalized = normalizeTitle(pick.title);
-        let merged = false;
-        for (let i = 0; i < list.length; i++) {
-          const existing = list.get(i);
-          if (!existing) continue;
-          if (normalizeTitle(existing.get("title")) !== normalized) continue;
-          const addedBy = existing.get("addedBy");
-          let alreadyAttributed = false;
-          for (let j = 0; j < addedBy.length; j++) {
-            if (addedBy.get(j) === self.id) {
-              alreadyAttributed = true;
-              break;
-            }
-          }
-          if (!alreadyAttributed) addedBy.push(self.id);
-          merged = true;
-          break;
-        }
-        if (merged) continue;
-        list.push(
-          new LiveObject<Candidate>({
-            id: crypto.randomUUID(),
-            title: pick.title,
-            type: pick.type,
-            year: pick.year,
-            addedBy: new LiveList([self.id]),
-            addedAt: Date.now(),
-          }),
-        );
-      }
-    },
-    [],
-  );
-
-  // Forward-declare pullCandidates for Task 9 (wired to Pull button)
-  void pullCandidates;
+  // Task 9: wired to Pull button
+  // const pullCandidates = useMutation(
+  //   ({ storage, self }, picked: readonly PickedCandidate[]) => {
+  //     if (storage.get("consensus").get("phase") !== "voting") return;
+  //     const list = storage.get("candidates");
+  //     for (const pick of picked) {
+  //       const normalized = normalizeTitle(pick.title);
+  //       let merged = false;
+  //       for (let i = 0; i < list.length; i++) {
+  //         const existing = list.get(i);
+  //         if (!existing) continue;
+  //         if (normalizeTitle(existing.get("title")) !== normalized) continue;
+  //         const addedBy = existing.get("addedBy");
+  //         let alreadyAttributed = false;
+  //         for (let j = 0; j < addedBy.length; j++) {
+  //           if (addedBy.get(j) === self.id) {
+  //             alreadyAttributed = true;
+  //             break;
+  //           }
+  //         }
+  //         if (!alreadyAttributed) addedBy.push(self.id);
+  //         merged = true;
+  //         break;
+  //       }
+  //       if (merged) continue;
+  //       list.push(
+  //         new LiveObject<Candidate>({
+  //           id: crypto.randomUUID(),
+  //           title: pick.title,
+  //           type: pick.type,
+  //           year: pick.year,
+  //           addedBy: new LiveList([self.id]),
+  //           addedAt: Date.now(),
+  //         }),
+  //       );
+  //     }
+  //   },
+  //   [],
+  // );
 
   const removeCandidate = useMutation(({ storage }, id: string) => {
     if (storage.get("consensus").get("phase") !== "voting") return;
