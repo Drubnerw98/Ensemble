@@ -97,7 +97,7 @@ describe("AvatarStack", () => {
     expect(img?.getAttribute("title")).toBe("Alice");
   });
 
-  it("does not apply rounded-full to the highlight wrapper (crush bug regression)", () => {
+  it("uses inline-flex on the wrapper so ring sizes to content (crush bug regression)", () => {
     const userInfoById = new Map([
       ["u1", { name: "Alice", avatarUrl: undefined }],
       ["u2", { name: "Bob", avatarUrl: undefined }],
@@ -112,8 +112,11 @@ describe("AvatarStack", () => {
         highlight
       />,
     );
-    const wrapper = container.firstElementChild;
+    const wrapper = container.firstElementChild as HTMLElement | null;
     expect(wrapper).not.toBeNull();
-    expect(wrapper?.className).not.toContain("rounded-full");
+    // inline-flex sizes to content; plain `flex` would stretch in a block
+    // parent and the ring would trace the full container width.
+    expect(wrapper?.className).toContain("inline-flex");
+    expect(wrapper?.className).not.toMatch(/(?<!inline-)flex /);
   });
 });

@@ -43,11 +43,15 @@ export function AvatarStack({
   const offsetClass = SIZE_OFFSET[size];
 
   const wrapperRing = highlight
-    ? "ring-2 ring-accent/50 ring-offset-2 ring-offset-bg rounded-md"
+    ? "ring-2 ring-accent/50 ring-offset-2 ring-offset-bg rounded-full"
     : "";
 
+  // inline-flex (not flex) is load-bearing: in a block parent (e.g., the
+  // HeroCard's `mt-3` wrapper), `flex` defaults to full width and the
+  // ring traces the full container, producing the "crush" stretch.
+  // inline-flex sizes to content so the ring fits the avatars + count.
   return (
-    <div className={`flex items-center gap-2 ${wrapperRing}`}>
+    <div className={`inline-flex items-center gap-2 ${wrapperRing}`}>
       <div className="flex">
         <AnimatePresence initial={false}>
           {visible.map((id, i) => {

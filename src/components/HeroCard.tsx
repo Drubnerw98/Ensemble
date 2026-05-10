@@ -24,7 +24,11 @@ export function HeroCard({
   spinningTitles?: readonly string[];
   animateOnMount?: boolean;
 }) {
-  const shouldSpin = animateOnMount && spinningTitles.length > 1;
+  // Always spin on threshold-cross (single winner OR tied set), not just
+  // on ties. Gives the consensus moment ~1.2s of "settling..." ceremony
+  // even when the room is small and unanimous, which would otherwise
+  // close out instantly. Late joiners (animateOnMount=false) still skip.
+  const shouldSpin = animateOnMount && spinningTitles.length >= 1;
   const [tickIndex, setTickIndex] = useState(0);
   const [settled, setSettled] = useState(!shouldSpin);
 

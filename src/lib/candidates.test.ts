@@ -83,26 +83,68 @@ describe("pickCandidates", () => {
     expect(result[0]).toEqual({ title: "Dune", type: "movie", year: 2024 });
   });
 
-  it("normalizes unknown type to 'unknown'", () => {
+  it("filters out items with unrecognized types (e.g. videogame)", () => {
     const result = pickCandidates(
       {
         library: [{ title: "Mystery", type: "videogame", year: 2024 }],
         recommendations: [],
       },
-      1,
+      5,
     );
-    expect(result[0].type).toBe("unknown");
+    expect(result).toEqual([]);
   });
 
-  it("missing type or year produces 'unknown' / null", () => {
+  it("filters out items with missing type", () => {
     const result = pickCandidates(
       {
         library: [{ title: "Bare" }],
         recommendations: [],
       },
+      5,
+    );
+    expect(result).toEqual([]);
+  });
+
+  it("includes anime items", () => {
+    const result = pickCandidates(
+      {
+        library: [{ title: "Frieren", type: "anime", year: 2023 }],
+        recommendations: [],
+      },
       1,
     );
-    expect(result[0]).toEqual({ title: "Bare", type: "unknown", year: null });
+    expect(result).toEqual([{ title: "Frieren", type: "anime", year: 2023 }]);
+  });
+
+  it("filters out books, games, music, podcasts", () => {
+    const result = pickCandidates(
+      {
+        library: [
+          { title: "B", type: "book", year: 2020 },
+          { title: "G", type: "game", year: 2020 },
+          { title: "M", type: "music", year: 2020 },
+          { title: "P", type: "podcast", year: 2020 },
+        ],
+        recommendations: [],
+      },
+      10,
+    );
+    expect(result).toEqual([]);
+  });
+
+  it("year is null when missing on an allowed-type item", () => {
+    const result = pickCandidates(
+      {
+        library: [{ title: "Yearless", type: "movie" }],
+        recommendations: [],
+      },
+      1,
+    );
+    expect(result[0]).toEqual({
+      title: "Yearless",
+      type: "movie",
+      year: null,
+    });
   });
 
   it("type comparison is case-insensitive", () => {

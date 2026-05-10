@@ -3,6 +3,7 @@ import type { ResonanceItem } from "../types/profile";
 export type CandidateType =
   | "movie"
   | "show"
+  | "anime"
   | "book"
   | "game"
   | "music"
@@ -18,9 +19,17 @@ export type PickedCandidate = {
 const LIBRARY_SHARE = 0.6;
 const MAX_COUNT = 20;
 
+// Watchable types only. Books, games, music, podcasts are filtered out
+// of pulls because the product is "what should we watch tonight" and
+// non-watchable media doesn't fit the group session shape. Manual entry
+// (which writes type "unknown") still works through addCandidate.
+const ALLOWED_TYPES = new Set<CandidateType>(["movie", "show", "anime"]);
+
 // Slice a hybrid candidate set from a Resonance profile snapshot.
 // Default split is library-weighted (LIBRARY_SHARE = 0.6); short sides
 // backfill from the other to honor the requested count when possible.
+// Non-watchable types are filtered before slicing so the count is
+// honored against the allowed set.
 export function pickCandidates(
   profile: {
     readonly library: readonly ResonanceItem[];
@@ -31,22 +40,25 @@ export function pickCandidates(
   const target = Math.max(0, Math.min(count, MAX_COUNT));
   if (target === 0) return [];
 
+  const allowedLibrary = profile.library.filter(isAllowed);
+  const allowedRecs = profile.recommendations.filter(isAllowed);
+
   const libraryShare = Math.ceil(target * LIBRARY_SHARE);
   const recsShare = target - libraryShare;
 
-  const libraryHead = profile.library.slice(0, libraryShare);
-  const recsHead = profile.recommendations.slice(0, recsShare);
+  const libraryHead = allowedLibrary.slice(0, libraryShare);
+  const recsHead = allowedRecs.slice(0, recsShare);
 
   const libraryShortBy = libraryShare - libraryHead.length;
   const recsBackfill =
     libraryShortBy > 0
-      ? profile.recommendations.slice(recsShare, recsShare + libraryShortBy)
+      ? allowedRecs.slice(recsShare, recsShare + libraryShortBy)
       : [];
 
   const recsShortBy = recsShare - recsHead.length;
   const libraryBackfill =
     recsShortBy > 0
-      ? profile.library.slice(libraryShare, libraryShare + recsShortBy)
+      ? allowedLibrary.slice(libraryShare, libraryShare + recsShortBy)
       : [];
 
   const merged = [
@@ -56,6 +68,10 @@ export function pickCandidates(
     ...libraryBackfill,
   ];
   return merged.map(normalize);
+}
+
+function isAllowed(item: ResonanceItem): boolean {
+  return ALLOWED_TYPES.has(parseType(item.type));
 }
 
 function normalize(item: ResonanceItem): PickedCandidate {
@@ -70,6 +86,7 @@ function parseType(raw: string | undefined): CandidateType {
   switch (raw?.toLowerCase()) {
     case "movie":
     case "show":
+    case "anime":
     case "book":
     case "game":
     case "music":
