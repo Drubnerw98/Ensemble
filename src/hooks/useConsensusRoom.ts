@@ -12,6 +12,7 @@ import type { Candidate, ConsensusPhase, ReactionKind, Reactions, ThresholdRule 
 import type { ReactionState } from "../components/ReactionRow";
 import { evaluate } from "../lib/consensus";
 import {
+  countAvailableForPull,
   hasWatchableContent,
   normalizeTitle,
   pickCandidates,
@@ -37,6 +38,7 @@ export type PullState =
   | { kind: "ready"; pulling: boolean }
   | { kind: "no-profile" }
   | { kind: "no-watchable" }
+  | { kind: "pool-exhausted" }
   | { kind: "loading" }
   | { kind: "error"; message: string }
   | { kind: "idle" };
@@ -563,8 +565,13 @@ export function useConsensusRoom() {
       return { kind: "error", message: profile.message };
     // profile.state === "ready"
     if (!hasWatchableContent(profile.data)) return { kind: "no-watchable" };
+    const excluded = new Set<string>();
+    for (const c of candidates) excluded.add(normalizeTitle(c.title));
+    if (countAvailableForPull(profile.data, excluded) === 0) {
+      return { kind: "pool-exhausted" };
+    }
     return { kind: "ready", pulling };
-  }, [profile, pulling]);
+  }, [profile, pulling, candidates]);
 
   return {
     // identity

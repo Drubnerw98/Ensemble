@@ -94,6 +94,31 @@ export function hasWatchableContent(profile: {
   return false;
 }
 
+// Count watchable items in a profile that aren't already excluded.
+// Drives the pool-exhausted Pull state so a user clicking Pull after
+// they've already drained their Resonance gets feedback instead of a
+// silent no-op.
+export function countAvailableForPull(
+  profile: {
+    readonly library: readonly ResonanceItem[];
+    readonly recommendations: readonly ResonanceItem[];
+  },
+  excludedTitles: ReadonlySet<string>,
+): number {
+  let count = 0;
+  for (const item of profile.library) {
+    if (isAllowed(item) && !excludedTitles.has(normalizeTitle(item.title))) {
+      count += 1;
+    }
+  }
+  for (const item of profile.recommendations) {
+    if (isAllowed(item) && !excludedTitles.has(normalizeTitle(item.title))) {
+      count += 1;
+    }
+  }
+  return count;
+}
+
 function normalize(item: ResonanceItem): PickedCandidate {
   return {
     title: item.title,

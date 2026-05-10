@@ -220,6 +220,8 @@ function PullControl({
   if (pullState.kind === "no-profile") helper = "Sign in to Resonance to pull suggestions.";
   if (pullState.kind === "no-watchable")
     helper = "Your Resonance has no movies, shows, or anime yet, add some to use this.";
+  if (pullState.kind === "pool-exhausted")
+    helper = "You've pulled everything in your Resonance. Have someone else pull, or add more there.";
   if (pullState.kind === "error") helper = pullState.message;
   if (pullState.kind === "loading") helper = "Loading your Resonance profile…";
 

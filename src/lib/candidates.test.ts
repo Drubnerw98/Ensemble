@@ -3,6 +3,7 @@ import {
   pickCandidates,
   normalizeTitle,
   hasWatchableContent,
+  countAvailableForPull,
 } from "./candidates";
 import type { ResonanceItem } from "../types/profile";
 
@@ -250,6 +251,50 @@ describe("hasWatchableContent", () => {
     expect(hasWatchableContent({ library: [], recommendations: [] })).toBe(
       false,
     );
+  });
+});
+
+describe("countAvailableForPull", () => {
+  it("returns total watchable count when excluded is empty", () => {
+    expect(
+      countAvailableForPull(
+        { library: lib("A", "B", "C"), recommendations: recs("D") },
+        new Set(),
+      ),
+    ).toBe(4);
+  });
+
+  it("subtracts excluded titles", () => {
+    expect(
+      countAvailableForPull(
+        { library: lib("A", "B"), recommendations: recs("C") },
+        new Set(["a"]),
+      ),
+    ).toBe(2);
+  });
+
+  it("ignores non-watchable types when counting", () => {
+    expect(
+      countAvailableForPull(
+        {
+          library: [
+            { title: "B", type: "book", year: 2020 },
+            { title: "A", type: "movie", year: 2024 },
+          ],
+          recommendations: [],
+        },
+        new Set(),
+      ),
+    ).toBe(1);
+  });
+
+  it("returns 0 when everything is excluded", () => {
+    expect(
+      countAvailableForPull(
+        { library: lib("A"), recommendations: recs("B") },
+        new Set(["a", "b"]),
+      ),
+    ).toBe(0);
   });
 });
 
