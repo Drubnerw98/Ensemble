@@ -10,7 +10,7 @@ import { LiveList, LiveObject } from "@liveblocks/client";
 import { useAuth } from "@clerk/clerk-react";
 import type { Candidate, ConsensusPhase, ReactionKind, Reactions, ThresholdRule } from "../lib/liveblocks";
 import type { ReactionState } from "../components/ReactionRow";
-import { evaluate } from "../lib/consensus";
+import { evaluate, votesNeeded } from "../lib/consensus";
 import {
   countAvailableForPull,
   hasWatchableContent,
@@ -143,6 +143,15 @@ export function useConsensusRoom() {
     currentEvaluation.winnerId === null;
 
   const finalizeDisabled = currentEvaluation.winnerId === null;
+
+  const thresholdVotesNeeded = useMemo(
+    () =>
+      votesNeeded(
+        consensus.threshold as ThresholdRule,
+        presentMemberIds.size,
+      ),
+    [consensus.threshold, presentMemberIds.size],
+  );
 
   const readyCount = useMemo(() => {
     let count = self.presence?.votingComplete ? 1 : 0;
@@ -596,6 +605,7 @@ export function useConsensusRoom() {
     noConsensusYet,
     finalizeDisabled,
     readyCount,
+    thresholdVotesNeeded,
     // animation gate
     observedTransition,
     // pull state

@@ -101,6 +101,8 @@ export function SessionUI({ code }: { code: string }) {
           votedCandidateIds={room.votedCandidateIds}
           pullersByCandidateId={room.pullersByCandidateId}
           reactionsByCandidateId={room.reactionsByCandidateId}
+          votesNeeded={room.thresholdVotesNeeded}
+          showThresholdMeter={room.consensus.phase === "voting"}
           locked={room.consensus.phase === "decided"}
           justDecidedId={
             room.observedTransition ? room.consensus.winnerId : null
@@ -258,6 +260,8 @@ function CandidatesPanel({
   votedCandidateIds,
   pullersByCandidateId,
   reactionsByCandidateId,
+  votesNeeded,
+  showThresholdMeter,
   locked,
   justDecidedId,
   pullState,
@@ -281,6 +285,8 @@ function CandidatesPanel({
   votedCandidateIds: ReadonlySet<string>;
   pullersByCandidateId: ReadonlyMap<string, readonly string[]>;
   reactionsByCandidateId: ReadonlyMap<string, ReactionState>;
+  votesNeeded: number;
+  showThresholdMeter: boolean;
   locked: boolean;
   justDecidedId: string | null;
   pullState: PullState;
@@ -359,6 +365,8 @@ function CandidatesPanel({
                 voted={votedCandidateIds.has(c.id)}
                 locked={locked}
                 justDecided={c.id === justDecidedId}
+                votesNeeded={votesNeeded}
+                showThresholdMeter={showThresholdMeter}
                 onVote={onVote}
                 onUnvote={onUnvote}
                 onRemove={onRemove}
@@ -381,6 +389,8 @@ function CandidateRow({
   voted,
   locked,
   justDecided,
+  votesNeeded,
+  showThresholdMeter,
   onVote,
   onUnvote,
   onRemove,
@@ -400,6 +410,8 @@ function CandidateRow({
   voted: boolean;
   locked: boolean;
   justDecided?: boolean;
+  votesNeeded: number;
+  showThresholdMeter: boolean;
   onVote: (id: string) => void;
   onUnvote: (id: string) => void;
   onRemove: (id: string) => void;
@@ -407,6 +419,7 @@ function CandidateRow({
 }) {
   const meta = formatMeta(candidate.type, candidate.year);
   const pullerCaption = formatPullers(pullerIds, userInfoById);
+  const crossed = voterIds.length >= votesNeeded;
 
   return (
     <li
@@ -440,14 +453,28 @@ function CandidateRow({
           </div>
         </div>
         <div className="flex w-full items-center justify-between gap-3 sm:w-auto sm:shrink-0 sm:justify-end">
-          <AvatarStack
-            userIds={voterIds}
-            userInfoById={userInfoById}
-            size="md"
-            max={3}
-            showCount
-            highlight={voted}
-          />
+          <div className="flex items-center gap-2">
+            <AvatarStack
+              userIds={voterIds}
+              userInfoById={userInfoById}
+              size="md"
+              max={3}
+              showCount={false}
+              highlight={voted}
+            />
+            {showThresholdMeter ? (
+              <span
+                className={`font-display text-[10px] font-medium tracking-[0.2em] uppercase ${
+                  crossed ? "text-accent" : "text-text-muted"
+                }`}
+                aria-label={`${voterIds.length} of ${votesNeeded} votes needed`}
+              >
+                {voterIds.length} / {votesNeeded}
+              </span>
+            ) : voterIds.length > 3 ? (
+              <span className="text-xs text-text-muted">{voterIds.length}</span>
+            ) : null}
+          </div>
           <div className="flex items-center gap-3">
             <Button
               size="sm"

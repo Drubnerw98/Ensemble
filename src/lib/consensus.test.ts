@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { evaluate } from "./consensus";
+import { evaluate, votesNeeded } from "./consensus";
 import type { ThresholdRule } from "./liveblocks";
 
 function rule(kind: ThresholdRule["kind"], n?: number): ThresholdRule {
@@ -170,5 +170,32 @@ describe("evaluate", () => {
       );
       expect(result).toEqual({ winnerId: "c2", tiedIds: ["c2"] });
     });
+  });
+});
+
+describe("votesNeeded", () => {
+  it("unanimous returns the present count", () => {
+    expect(votesNeeded(rule("unanimous"), 4)).toBe(4);
+    expect(votesNeeded(rule("unanimous"), 1)).toBe(1);
+  });
+
+  it("unanimous floors at 1 for an empty room", () => {
+    expect(votesNeeded(rule("unanimous"), 0)).toBe(1);
+  });
+
+  it("majority returns strictly more than half", () => {
+    expect(votesNeeded(rule("majority"), 4)).toBe(3);
+    expect(votesNeeded(rule("majority"), 5)).toBe(3);
+    expect(votesNeeded(rule("majority"), 6)).toBe(4);
+    expect(votesNeeded(rule("majority"), 1)).toBe(1);
+  });
+
+  it("first-to-n returns n regardless of present count", () => {
+    expect(votesNeeded(rule("first-to-n", 3), 10)).toBe(3);
+    expect(votesNeeded(rule("first-to-n", 5), 2)).toBe(5);
+  });
+
+  it("first-to-n floors at 1 for n=0", () => {
+    expect(votesNeeded(rule("first-to-n", 0), 4)).toBe(1);
   });
 });

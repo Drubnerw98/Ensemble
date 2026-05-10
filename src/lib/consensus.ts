@@ -52,3 +52,23 @@ function matchesThreshold(
       return voteCount >= threshold.n;
   }
 }
+
+// Smallest integer vote count that would cross the threshold given the
+// current presence set. Used to render "X / Y" hints on each candidate
+// row so users see how close any pick is to crossing without doing the
+// math themselves. Mirrors matchesThreshold inversely.
+export function votesNeeded(
+  threshold: ThresholdRule,
+  presentCount: number,
+): number {
+  switch (threshold.kind) {
+    case "unanimous":
+      return Math.max(presentCount, 1);
+    case "majority":
+      // Strictly greater than half: 3 in a room of 4, 4 in a room of 6,
+      // 1 in a room of 1.
+      return Math.floor(presentCount / 2) + 1;
+    case "first-to-n":
+      return Math.max(threshold.n, 1);
+  }
+}
