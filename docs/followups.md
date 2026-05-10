@@ -17,6 +17,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-05-09 — Disabled controls need accessible reason](#2026-05-09--disabled-controls-need-accessible-reason)
   - [2026-05-09 — Consider extracting consensus logic from SessionUI](#2026-05-09--consider-extracting-consensus-logic-from-sessionui)
   - [2026-05-09 — Voter avatars crush on candidate rows under multi-vote load](#2026-05-09--voter-avatars-crush-on-candidate-rows-under-multi-vote-load)
+  - [2026-05-09 — Items-per-pull input shows pre-clamp value until storage round-trip](#2026-05-09--items-per-pull-input-shows-pre-clamp-value-until-storage-round-trip)
 - [Resolved](#resolved)
 - [Abandoned](#abandoned)
 
@@ -186,6 +187,29 @@ Note (2026-05-09): all three currently have SVG favicons that follow a loose fam
 
 - Is the crush happening only at narrow widths or also on desktop?
 - Are the avatars losing aspect ratio (rendered as ovals) or just visually overlapping more aggressively than intended?
+
+### 2026-05-09 — Items-per-pull input shows pre-clamp value until storage round-trip
+
+**What:** The host's "Items per pull" number input in `ThresholdPicker` is controlled, but UI-side clamping is enforced only by the HTML `min={1} max={20}` attributes (which the browser respects for spinner buttons but not for arbitrary keyboard input). When a host types `0` or `25` directly, the input shows that value until the `setCandidatesPerPull` mutation clamps it server-side and the Liveblocks round-trip pushes the clamped value back to the prop. Brief visual mismatch; no incorrect storage state.
+
+**Why noticed:** Surfaced during the final cross-cutting review of the Resonance candidate population implementation on 2026-05-09. Reviewer flagged it as a Minor UX rough edge. An earlier mid-implementation fix attempt to add a `>= 1` guard in `handlePerPullChange` was reverted because it broke the controlled-input typing flow (intermediate keystroke values would be rejected). The current state is acceptable for MVP because the stored value is always correct.
+
+**Anchors:**
+
+- `src/components/ThresholdPicker.tsx` (`handlePerPullChange`, the input element)
+- `src/components/SessionUI.tsx` (`setCandidatesPerPull` mutation, which clamps to 1-20)
+
+**What's been considered:**
+
+- Naive `>= 1` guard rejects typing flow (clearing the input emits 0 and stops further onChange propagation).
+- A debounced or onBlur-only commit would feel sluggish for what should be an instant control.
+- A controlled local-state mirror with deferred clamp on commit is the standard React pattern for this case but adds component state Card.Eyebrow doesn't currently have.
+
+**Shape of work:** Either accept the rough edge or add a thin local-state layer in the input that defers clamping until blur/Enter. Likely lands during build step 8 (mobile + polish) when input UX gets a deliberate review.
+
+**Open questions:**
+
+- Does drub care enough about the brief visual mismatch to invest in a controlled-with-local-buffer pattern?
 
 ## Resolved
 
