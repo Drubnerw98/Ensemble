@@ -17,6 +17,10 @@ export type Candidate = {
   year: number | null;
   addedBy: LiveList<string>;
   addedAt: number;
+  // Optional — added in the TMDB enrichment pass. Absent on candidates
+  // created before that change; render as a placeholder when null/missing.
+  posterUrl?: string | null;
+  tmdbId?: number | null;
   // Widened from string | number to satisfy LsonObject now that the
   // type holds a Live* node (addedBy) and nullable primitives (year).
   // Mirrors the index signature on Consensus.
