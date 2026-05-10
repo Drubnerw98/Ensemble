@@ -161,6 +161,7 @@ These are drub's principles, demonstrated working in Resonance and now applied t
 23. Touch targets: 44px on mobile via Button primitive shim.
 24. Finalize-voting: per-user Done flag in Presence, all-present-Done auto-finalizes, host has Finalize-now override.
 25. TMDB integration: serverless proxy hides v3 read token, candidate schema gains optional posterUrl + tmdbId, autocomplete on manual entry with freeform fallback, Resonance pulls enriched before storage write.
+26. Reactions on candidates: 4-button fixed set (thumbsUp, heart, thinking, yikes), LiveMap storage, toggle-on-tap, disabled when locked.
 
 **Next step**: Deploy and real-user test (build step 9). Ship to Vercel, run a session with a friend.
 

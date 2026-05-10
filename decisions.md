@@ -353,3 +353,17 @@ The `Why` line in each entry is what an interviewer will hear from drub when ask
 **Tradeoff accepted**: Each candidate add has a TMDB round-trip (a few hundred ms typed-to-suggestion); each Resonance pull has 5 concurrent lookups. Acceptable because TMDB free tier is generous (~50/sec) and the UX is "type a title, see results" which already implies waiting.
 
 **Would revisit if**: TMDB rate-limits start biting (move to cached search results), or genres/runtime become important enough to justify a per-candidate details lookup.
+
+---
+
+## 2026-05-10 -- Reactions on candidates: 4-button fixed set
+
+**Considered**: no reactions (status quo, only votes for signaling), 3-button set (thumbsUp/thinking/yikes, minimum viable), 4-button set (chosen, adds heart for warmer-than-vote signal), 5-button set (adds a "seen it" marker), freeform emoji.
+
+**Decision**: Fixed 4-button reaction set: thumbsUp, heart, thinking, yikes. Stored as `LiveMap<candidateId, LiveObject<{ thumbsUp, heart, thinking, yikes: LiveList<string> }>>`. Toggle-on-tap, idempotent. Disabled when phase is decided.
+
+**Why**: Approval voting forces a binary decision per candidate. Reactions add the texture group decisions actually have: "I'd watch", "love it", "intrigued", "not for me." Four buttons is enough nuance without choice paralysis. Fixed set means the room speaks the same language; freeform emoji would fragment signal. Heart vs thumbs is the warm-vs-mild distinction friends naturally make. Storing userIds in the LiveLists rather than just counts preserves future per-user display without a schema migration.
+
+**Tradeoff accepted**: Storage grows by one LiveMap with four LiveLists per reacted-on candidate. Acceptable for ephemeral rooms with small candidate counts.
+
+**Would revisit if**: Users actively want a "seen it" marker or other states (extend to 5-button), or reactions become so dense they crowd the row visually (move to hover-reveal or collapse when all-zero).
