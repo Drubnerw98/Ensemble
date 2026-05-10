@@ -16,6 +16,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-05-09 — Extract shared UserInfo type](#2026-05-09--extract-shared-userinfo-type)
   - [2026-05-09 — Disabled controls need accessible reason](#2026-05-09--disabled-controls-need-accessible-reason)
   - [2026-05-09 — Consider extracting consensus logic from SessionUI](#2026-05-09--consider-extracting-consensus-logic-from-sessionui)
+  - [2026-05-09 — Voter avatars crush on candidate rows under multi-vote load](#2026-05-09--voter-avatars-crush-on-candidate-rows-under-multi-vote-load)
 - [Resolved](#resolved)
 - [Abandoned](#abandoned)
 
@@ -167,6 +168,24 @@ Note (2026-05-09): all three currently have SVG favicons that follow a loose fam
 **Open questions:**
 
 - Hook or context? Hook is simpler; context would let nested components subscribe selectively.
+
+### 2026-05-09 — Voter avatars crush on candidate rows under multi-vote load
+
+**What:** When multiple voters cast votes on the same candidate, the avatar stack on the candidate row visually crushes (avatars squish, layout gets awkward). Drub flagged it during a session where multiple votes were cast.
+
+**Why noticed:** Drub raised it as a side note while planning the next build phase. Likely a layout issue inside `CandidateRow` (the row uses `flex items-center` with the title set to `min-w-0 truncate` and the right-side cluster `shrink-0`, but the AvatarStack itself may be losing aspect ratio or horizontal space when many voters land at once). Probably worse on narrow viewports.
+
+**Anchors:**
+
+- `src/components/SessionUI.tsx` — `CandidateRow` (the `<li>` row layout and AvatarStack placement)
+- `src/components/ui/AvatarStack.tsx` — the stack primitive itself, in case the squish is intrinsic to the component rather than the row layout
+
+**Shape of work:** Reproduce locally with 4-5 simulated votes and inspect. Likely a `min-w-0` missing somewhere, an `aspect-square` not being held on the avatar img, or insufficient room when title text takes most of the row. Could fold into the mobile breakpoints + polish pass (build step 8) since it touches the same surface, or fix sooner if the Resonance candidate population work surfaces it on every row.
+
+**Open questions:**
+
+- Is the crush happening only at narrow widths or also on desktop?
+- Are the avatars losing aspect ratio (rendered as ovals) or just visually overlapping more aggressively than intended?
 
 ## Resolved
 
