@@ -57,6 +57,7 @@ export function Session() {
             decidedAt: null,
             candidatesPerPull: 5,
           }),
+          reactions: new LiveMap(),
         }}
       >
         <ClientSideSuspense

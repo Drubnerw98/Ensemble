@@ -6,6 +6,15 @@ import type {
 } from "@liveblocks/client";
 import type { CandidateType } from "./candidates";
 
+export type ReactionKind = "thumbsUp" | "heart" | "thinking" | "yikes";
+
+export type Reactions = {
+  thumbsUp: LiveList<string>;
+  heart: LiveList<string>;
+  thinking: LiveList<string>;
+  yikes: LiveList<string>;
+};
+
 // Re-export so consumers that work with storage shapes can import
 // CandidateType from this module without reaching into ./candidates.
 export type { CandidateType } from "./candidates";
@@ -54,6 +63,7 @@ declare global {
       candidates: LiveList<LiveObject<Candidate>>;
       votes: LiveMap<string, LiveList<string>>;
       consensus: LiveObject<Consensus>;
+      reactions: LiveMap<string, LiveObject<Reactions>>;
     };
     UserMeta: {
       id: string;
