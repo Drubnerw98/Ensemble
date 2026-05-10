@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { AvatarStack, Button, Card } from "./ui";
-
-type UserInfo = { name?: string; avatarUrl?: string };
+import type { UserInfo } from "../lib/types";
 
 const SPIN_TICK_MS = 140;
 const SPIN_TOTAL_MS = 1200;

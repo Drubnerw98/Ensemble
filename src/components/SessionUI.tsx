@@ -1,7 +1,8 @@
 import { useCallback, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth, UserButton } from "@clerk/clerk-react";
-import { useConsensusRoom, type UserInfo, type PullState } from "../hooks/useConsensusRoom";
+import { useConsensusRoom, type PullState } from "../hooks/useConsensusRoom";
+import type { UserInfo } from "../lib/types";
 import type { ReactionKind, ThresholdRule } from "../lib/liveblocks";
 import { ReactionRow, type ReactionState } from "./ReactionRow";
 import { searchTmdb, type TmdbResult } from "../lib/tmdb";

@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from "framer-motion";
+import type { UserInfo } from "../../lib/types";
 
-type UserInfo = { name?: string; avatarUrl?: string };
 type Size = "sm" | "md";
 
 type AvatarStackProps = {

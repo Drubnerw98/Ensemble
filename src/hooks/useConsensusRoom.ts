@@ -11,6 +11,7 @@ import { LiveList, LiveObject } from "@liveblocks/client";
 import { useAuth } from "@clerk/clerk-react";
 import type { Candidate, ConsensusPhase, ReactionKind, Reactions, ThresholdRule } from "../lib/liveblocks";
 import type { ReactionState } from "../components/ReactionRow";
+import type { UserInfo } from "../lib/types";
 import { evaluate, votesNeeded } from "../lib/consensus";
 import {
   countAvailableForPull,
@@ -21,8 +22,6 @@ import {
 } from "../lib/candidates";
 import { searchTmdb, pickBestMatch } from "../lib/tmdb";
 import { useResonanceProfile } from "./useResonanceProfile";
-
-export type UserInfo = { name?: string; avatarUrl?: string };
 
 function reactionStateFor(
   list: readonly string[] | undefined,
