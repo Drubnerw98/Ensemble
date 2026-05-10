@@ -86,6 +86,9 @@ export function SessionUI({ code }: { code: string }) {
           votedCandidateIds={room.votedCandidateIds}
           pullersByCandidateId={room.pullersByCandidateId}
           locked={room.consensus.phase === "decided"}
+          justDecidedId={
+            room.observedTransition ? room.consensus.winnerId : null
+          }
           pullState={room.pullState}
           onAdd={room.addCandidate}
           onRemove={room.removeCandidate}
@@ -226,6 +229,7 @@ function CandidatesPanel({
   votedCandidateIds,
   pullersByCandidateId,
   locked,
+  justDecidedId,
   pullState,
   onAdd,
   onRemove,
@@ -239,6 +243,7 @@ function CandidatesPanel({
   votedCandidateIds: ReadonlySet<string>;
   pullersByCandidateId: ReadonlyMap<string, readonly string[]>;
   locked: boolean;
+  justDecidedId: string | null;
   pullState: PullState;
   onAdd: (title: string) => void;
   onRemove: (id: string) => void;
@@ -296,6 +301,7 @@ function CandidatesPanel({
                 userInfoById={userInfoById}
                 voted={votedCandidateIds.has(c.id)}
                 locked={locked}
+                justDecided={c.id === justDecidedId}
                 onVote={onVote}
                 onUnvote={onUnvote}
                 onRemove={onRemove}
@@ -315,6 +321,7 @@ function CandidateRow({
   userInfoById,
   voted,
   locked,
+  justDecided,
   onVote,
   onUnvote,
   onRemove,
@@ -330,6 +337,7 @@ function CandidateRow({
   userInfoById: ReadonlyMap<string, UserInfo>;
   voted: boolean;
   locked: boolean;
+  justDecided?: boolean;
   onVote: (id: string) => void;
   onUnvote: (id: string) => void;
   onRemove: (id: string) => void;
@@ -339,7 +347,11 @@ function CandidateRow({
   const pullerCaption = formatPullers(pullerIds, userInfoById);
 
   return (
-    <li className="flex flex-col gap-2 rounded-md border border-border bg-bg/40 px-3 py-2 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+    <li
+      className={`flex flex-col gap-2 rounded-md border border-border bg-bg/40 px-3 py-2 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-3${
+        justDecided ? " animate-row-pulse" : ""
+      }`}
+    >
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline gap-2">
           <span className="min-w-0 truncate">{candidate.title}</span>

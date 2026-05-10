@@ -40,3 +40,23 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
 }
+
+/* Row-pulse: brief saffron glow on the winning candidate row when consensus
+   first crosses on this client. Hooked to observedTransition in SessionUI so
+   late joiners do not replay it. Returns to resting state at 100% so the class
+   can stay applied without leaving a permanent visual. */
+@keyframes row-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(232, 168, 87, 0);
+  }
+  35% {
+    box-shadow: 0 0 0 3px rgba(232, 168, 87, 0.55);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(232, 168, 87, 0);
+  }
+}
+
+.animate-row-pulse {
+  animation: row-pulse 600ms ease-out 1;
+}
