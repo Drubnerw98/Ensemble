@@ -51,24 +51,25 @@ export function SessionUI({ code }: { code: string }) {
           onCandidatesPerPullChange={room.setCandidatesPerPull}
         />
 
-        {room.consensus.phase === "decided" && room.consensus.winnerId ? (
-          <HeroCard
-            winnerTitle={
-              room.candidates.find((c) => c.id === room.consensus.winnerId)?.title ??
-              "(removed)"
-            }
-            winnerPosterUrl={
-              room.candidates.find((c) => c.id === room.consensus.winnerId)?.posterUrl ??
-              null
-            }
-            voterIds={room.votes.get(room.consensus.winnerId) ?? EMPTY_VOTER_LIST}
-            userInfoById={room.userInfoById}
-            isHost={room.isHost}
-            onReconsider={room.reconsider}
-            spinningTitles={room.spinningTitles}
-            animateOnMount={room.observedTransition}
-          />
-        ) : null}
+        {room.consensus.phase === "decided" && room.consensus.winnerId ? (() => {
+          const winner = room.candidates.find(
+            (c) => c.id === room.consensus.winnerId,
+          );
+          return (
+            <HeroCard
+              winnerTitle={winner?.title ?? "(removed)"}
+              winnerPosterUrl={winner?.posterUrl ?? null}
+              winnerType={winner?.type ?? null}
+              winnerYear={winner?.year ?? null}
+              voterIds={room.votes.get(room.consensus.winnerId) ?? EMPTY_VOTER_LIST}
+              userInfoById={room.userInfoById}
+              isHost={room.isHost}
+              onReconsider={room.reconsider}
+              spinningTitles={room.spinningTitles}
+              animateOnMount={room.observedTransition}
+            />
+          );
+        })() : null}
 
         <Card>
           <Card.Eyebrow count={1 + room.others.length}>In the room</Card.Eyebrow>
@@ -428,7 +429,9 @@ function CandidateRow({
             <div className="flex items-baseline gap-2">
               <span className="min-w-0 truncate">{candidate.title}</span>
               {meta ? (
-                <span className="shrink-0 text-xs text-text-muted">{meta}</span>
+                <span className="shrink-0 font-display text-[10px] font-medium tracking-[0.2em] text-text-muted uppercase">
+                  {meta}
+                </span>
               ) : null}
             </div>
             {pullerCaption ? (
@@ -480,7 +483,7 @@ function formatMeta(type: string, year: number | null): string | null {
   const parts: string[] = [];
   if (type !== "unknown") parts.push(type);
   if (year !== null) parts.push(String(year));
-  return parts.length > 0 ? `(${parts.join(" · ")})` : null;
+  return parts.length > 0 ? parts.join(" · ") : null;
 }
 
 function formatPullers(

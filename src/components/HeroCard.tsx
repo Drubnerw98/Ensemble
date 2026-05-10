@@ -10,6 +10,8 @@ const SPIN_TOTAL_MS = 1200;
 export function HeroCard({
   winnerTitle,
   winnerPosterUrl = null,
+  winnerType = null,
+  winnerYear = null,
   voterIds,
   userInfoById,
   isHost,
@@ -19,6 +21,8 @@ export function HeroCard({
 }: {
   winnerTitle: string;
   winnerPosterUrl?: string | null;
+  winnerType?: string | null;
+  winnerYear?: number | null;
   voterIds: readonly string[];
   userInfoById: ReadonlyMap<string, UserInfo>;
   isHost: boolean;
@@ -84,26 +88,33 @@ export function HeroCard({
       }
     : { initial: false as const };
 
+  const metaLabel = formatMetaLabel(winnerType, winnerYear);
+
   return (
     <motion.div ref={heroRef} {...motionProps}>
-      <Card className="border-accent/40 bg-accent/[0.04]">
+      <Card className="border-accent/50 bg-gradient-to-b from-accent/[0.07] to-accent/[0.02] p-7 sm:p-8">
         <Card.Eyebrow>Tonight&apos;s pick</Card.Eyebrow>
         <Card.Body>
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="flex min-w-0 flex-1 items-start gap-4">
+          <div className="flex flex-wrap items-start justify-between gap-5">
+            <div className="flex min-w-0 flex-1 items-start gap-5">
               {winnerPosterUrl ? (
                 <img
                   src={winnerPosterUrl}
                   alt=""
-                  className="h-36 w-24 shrink-0 rounded-md object-cover"
+                  className="h-52 w-36 shrink-0 rounded-md object-cover shadow-lg shadow-black/40"
                 />
               ) : null}
               <div className="min-w-0">
-                <h2 className="font-display text-2xl font-light tracking-tight text-text">
+                <h2 className="font-display text-3xl font-light leading-tight tracking-tight text-text sm:text-4xl">
                   {displayedTitle}
                 </h2>
+                {metaLabel && settled ? (
+                  <p className="mt-2 font-display text-[11px] font-medium tracking-[0.28em] text-text-muted uppercase">
+                    {metaLabel}
+                  </p>
+                ) : null}
                 {settled ? (
-                  <div className="mt-3">
+                  <div className="mt-5">
                     <AvatarStack
                       userIds={voterIds}
                       userInfoById={userInfoById}
@@ -126,4 +137,14 @@ export function HeroCard({
       </Card>
     </motion.div>
   );
+}
+
+function formatMetaLabel(
+  type: string | null,
+  year: number | null,
+): string | null {
+  const parts: string[] = [];
+  if (type && type !== "unknown") parts.push(type);
+  if (year !== null) parts.push(String(year));
+  return parts.length > 0 ? parts.join(" · ") : null;
 }
