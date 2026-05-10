@@ -676,10 +676,7 @@ function CandidateRow({
   onUnvote: (id: string) => void;
   onRemove: (id: string) => void;
 }) {
-  const meta =
-    candidate.type !== "unknown" || candidate.year !== null
-      ? formatMeta(candidate.type, candidate.year)
-      : null;
+  const meta = formatMeta(candidate.type, candidate.year);
 
   const pullerCaption = formatPullers(pullerIds, userInfoById);
 
@@ -728,11 +725,11 @@ function CandidateRow({
   );
 }
 
-function formatMeta(type: string, year: number | null): string {
+function formatMeta(type: string, year: number | null): string | null {
   const parts: string[] = [];
   if (type !== "unknown") parts.push(type);
   if (year !== null) parts.push(String(year));
-  return parts.length > 0 ? `(${parts.join(" · ")})` : "";
+  return parts.length > 0 ? `(${parts.join(" · ")})` : null;
 }
 
 function formatPullers(
