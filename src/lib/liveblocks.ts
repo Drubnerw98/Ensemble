@@ -1,14 +1,26 @@
-import type { LiveList, LiveMap, LiveObject, Lson } from "@liveblocks/client";
+import type {
+  LiveList,
+  LiveMap,
+  LiveObject,
+  Lson,
+} from "@liveblocks/client";
+import type { CandidateType } from "./candidates";
 
-// Index signature satisfies Liveblocks' LsonObject constraint — values
-// stored in Liveblocks Storage must be primitives, Live* nodes, or plain
-// objects that allow string-keyed access.
+// Re-export so consumers that work with storage shapes can import
+// CandidateType from this module without reaching into ./candidates.
+export type { CandidateType } from "./candidates";
+
 export type Candidate = {
   id: string;
   title: string;
-  addedBy: string;
+  type: CandidateType;
+  year: number | null;
+  addedBy: LiveList<string>;
   addedAt: number;
-  [key: string]: string | number;
+  // Widened from string | number to satisfy LsonObject now that the
+  // type holds a Live* node (addedBy) and nullable primitives (year).
+  // Mirrors the index signature on Consensus.
+  [key: string]: Lson | undefined;
 };
 
 export type ThresholdRule =
@@ -25,13 +37,10 @@ export type Consensus = {
   winnerId: string | null;
   tiedIds: string[];
   decidedAt: number | null;
-  // Wider index signature than Candidate's — Consensus holds nested
-  // objects (threshold), arrays (tiedIds), and nullable primitives.
+  candidatesPerPull: number;
   [key: string]: Lson | undefined;
 };
 
-// Module augmentation tells Liveblocks' hooks (useStorage, useSelf, etc.)
-// what shape our room data has so they're typed end-to-end.
 declare global {
   interface Liveblocks {
     Presence: Record<string, never>;
