@@ -74,6 +74,18 @@ function isAllowed(item: ResonanceItem): boolean {
   return ALLOWED_TYPES.has(parseType(item.type));
 }
 
+// Detect whether a Resonance snapshot contains anything pickCandidates
+// would return. Used to short-circuit the Pull button with a helper
+// message when a Resonance user has only books/games/music/podcasts.
+export function hasWatchableContent(profile: {
+  readonly library: readonly ResonanceItem[];
+  readonly recommendations: readonly ResonanceItem[];
+}): boolean {
+  for (const item of profile.library) if (isAllowed(item)) return true;
+  for (const item of profile.recommendations) if (isAllowed(item)) return true;
+  return false;
+}
+
 function normalize(item: ResonanceItem): PickedCandidate {
   return {
     title: item.title,

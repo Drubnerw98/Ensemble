@@ -218,6 +218,8 @@ function PullControl({
   const disabled = locked || pullState.kind !== "ready" || pullState.pulling;
   let helper: string | null = null;
   if (pullState.kind === "no-profile") helper = "Sign in to Resonance to pull suggestions.";
+  if (pullState.kind === "no-watchable")
+    helper = "Your Resonance has no movies, shows, or anime yet, add some to use this.";
   if (pullState.kind === "error") helper = pullState.message;
   if (pullState.kind === "loading") helper = "Loading your Resonance profile…";
 

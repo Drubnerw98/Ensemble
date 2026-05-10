@@ -11,7 +11,12 @@ import { useAuth } from "@clerk/clerk-react";
 import type { Candidate, ConsensusPhase, ReactionKind, Reactions, ThresholdRule } from "../lib/liveblocks";
 import type { ReactionState } from "../components/ReactionRow";
 import { evaluate } from "../lib/consensus";
-import { normalizeTitle, pickCandidates, type PickedCandidate } from "../lib/candidates";
+import {
+  hasWatchableContent,
+  normalizeTitle,
+  pickCandidates,
+  type PickedCandidate,
+} from "../lib/candidates";
 import { searchTmdb, pickBestMatch } from "../lib/tmdb";
 import { useResonanceProfile } from "./useResonanceProfile";
 
@@ -31,6 +36,7 @@ function reactionStateFor(
 export type PullState =
   | { kind: "ready"; pulling: boolean }
   | { kind: "no-profile" }
+  | { kind: "no-watchable" }
   | { kind: "loading" }
   | { kind: "error"; message: string }
   | { kind: "idle" };
@@ -541,19 +547,16 @@ export function useConsensusRoom() {
     }
   }, [self.id, self.connectionId, others, consensus.hostId, setHost]);
 
-  const pullState: PullState = useMemo(
-    () =>
-      profile.state === "idle"
-        ? { kind: "idle" }
-        : profile.state === "loading"
-          ? { kind: "loading" }
-          : profile.state === "no-profile"
-            ? { kind: "no-profile" }
-            : profile.state === "error"
-              ? { kind: "error", message: profile.message }
-              : { kind: "ready", pulling },
-    [profile, pulling],
-  );
+  const pullState: PullState = useMemo(() => {
+    if (profile.state === "idle") return { kind: "idle" };
+    if (profile.state === "loading") return { kind: "loading" };
+    if (profile.state === "no-profile") return { kind: "no-profile" };
+    if (profile.state === "error")
+      return { kind: "error", message: profile.message };
+    // profile.state === "ready"
+    if (!hasWatchableContent(profile.data)) return { kind: "no-watchable" };
+    return { kind: "ready", pulling };
+  }, [profile, pulling]);
 
   return {
     // identity

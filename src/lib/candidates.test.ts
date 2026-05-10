@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { pickCandidates, normalizeTitle } from "./candidates";
+import {
+  pickCandidates,
+  normalizeTitle,
+  hasWatchableContent,
+} from "./candidates";
 import type { ResonanceItem } from "../types/profile";
 
 function lib(...titles: string[]): ResonanceItem[] {
@@ -156,6 +160,56 @@ describe("pickCandidates", () => {
       1,
     );
     expect(result[0].type).toBe("movie");
+  });
+});
+
+describe("hasWatchableContent", () => {
+  it("returns true when library has a movie", () => {
+    expect(
+      hasWatchableContent({
+        library: [{ title: "X", type: "movie", year: 2024 }],
+        recommendations: [],
+      }),
+    ).toBe(true);
+  });
+
+  it("returns true when only recommendations have a show", () => {
+    expect(
+      hasWatchableContent({
+        library: [],
+        recommendations: [{ title: "X", type: "show", year: 2024 }],
+      }),
+    ).toBe(true);
+  });
+
+  it("returns true when only anime is present", () => {
+    expect(
+      hasWatchableContent({
+        library: [{ title: "Frieren", type: "anime", year: 2023 }],
+        recommendations: [],
+      }),
+    ).toBe(true);
+  });
+
+  it("returns false when only books, games, music, podcasts are present", () => {
+    expect(
+      hasWatchableContent({
+        library: [
+          { title: "B", type: "book", year: 2020 },
+          { title: "G", type: "game", year: 2020 },
+        ],
+        recommendations: [
+          { title: "M", type: "music", year: 2020 },
+          { title: "P", type: "podcast", year: 2020 },
+        ],
+      }),
+    ).toBe(false);
+  });
+
+  it("returns false when both slices are empty", () => {
+    expect(hasWatchableContent({ library: [], recommendations: [] })).toBe(
+      false,
+    );
   });
 });
 
