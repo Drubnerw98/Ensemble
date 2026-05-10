@@ -113,7 +113,11 @@ export function SessionUI({ code }: { code: string }) {
       if (!cleanedTitle) return;
       const list = storage.get("candidates");
       const normalized = normalizeTitle(cleanedTitle);
-      // Dedup: append puller to addedBy if title already present.
+      // Dedup: append self to addedBy if the title is already in the list.
+      // Covers sequential adds only. True simultaneous adds from two
+      // clients both see an empty list and both push, producing a
+      // duplicate row that the spec accepts as a CRDT race we don't
+      // server-side merge.
       for (let i = 0; i < list.length; i++) {
         const existing = list.get(i);
         if (!existing) continue;
