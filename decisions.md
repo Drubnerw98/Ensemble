@@ -297,3 +297,31 @@ The `Why` line in each entry is what an interviewer will hear from drub when ask
 **Tradeoff accepted**: One more host control (alongside the threshold rule). Surface area in the host UI grows, but stays inside one card so the visual cost is small.
 
 **Would revisit if**: Hosts always change the default (default is wrong) or never touch it (configuration was overengineered).
+
+---
+
+## 2026-05-10 — Mobile breakpoint strategy: single breakpoint at sm (640px)
+
+**Considered**: **Single breakpoint at sm** (one pivot, mobile vs everything else), **two-tier (sm + md)** (mobile, tablet, desktop), **three-tier (sm + md + lg)** (mobile, tablet, small desktop, large desktop).
+
+**Decision**: Single breakpoint at sm (640px). Below: phone-shaped layout. At and above: current desktop layout. No tablet-specific tier.
+
+**Why**: The build step 8 pass is tactical, not crafted. Multi-tier responsive design earns its keep when product surfaces have meaningfully different shapes at multiple widths. Ensemble's session view is the only complex page; everything else (Landing, Home) is already simple. One pivot is cheaper to reason about, cheaper to verify (two viewports: 375 and 1024), and matches the only existing breakpoint in the codebase (the sm:grid-cols-2 on Home). If real-user testing on tablets shows the layout feels wrong in the 640 to 1023 range, an md tier becomes the natural addition.
+
+**Tradeoff accepted**: Tablets (640 to 1023px) get the desktop layout. The candidate row's horizontal arrangement may feel slightly cramped on a portrait tablet at 768px width. Acceptable because tablets are not a primary use case (the friend test happens on phones and laptops) and adding a tier without evidence is premature.
+
+**Would revisit if**: Real-user testing surfaces a tablet-specific complaint, or the cross-site visual audit prefers a shared multi-tier system.
+
+---
+
+## 2026-05-10 — Touch targets: 44px on mobile via Button primitive shim
+
+**Considered**: **Apple HIG (44pt)**, **Material (48dp)**, **keep current sizes**, **selective bump on Vote and Add only**.
+
+**Decision**: 44px on mobile, applied at the Button primitive via `min-h-11 sm:min-h-0`. The form input in CandidatesPanel matches via the same shim so the form line aligns visually.
+
+**Why**: Apple HIG and Material differ by 4px; Apple's 44 fits Tailwind's `min-h-11` directly with no custom value. Bumping at the primitive level means every Button consumer benefits with no API change and no per-consumer audit. Selective bump (Vote and Add only) was tempting but brittle: any new button in the app would have to be remembered. The primitive shim is one edit and load-bearing forever. Keep-current-sizes was the cheapest option but loses the friend-test on a phone where fat-finger misses on the Vote button would shape the first impression.
+
+**Tradeoff accepted**: Rows feel slightly taller on mobile than they would with the desktop sizes. Fits the stacked-row decision: the row is already taller on mobile because content stacks, so the buttons being taller is consistent rather than out of place.
+
+**Would revisit if**: Real-user testing shows the mobile layout feels cramped despite the bump (suggests deeper density work), or accessibility audit finds 44px is insufficient (then bump to 48px to match Material).

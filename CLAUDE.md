@@ -132,7 +132,7 @@ These are drub's principles, demonstrated working in Resonance and now applied t
 
 ## Current state
 
-**Phase**: Resonance candidate population shipped. Per-user "Pull from my Resonance" button contributes a hybrid library + recommendations slice; multi-attribution dedup; type and year on candidates; host-configurable items-per-pull. Consensus flow and visual system live underneath.
+**Phase**: Mobile polish shipped. Single sm breakpoint, stacked CandidateRow on phones, 44px touch targets via Button primitive shim, AvatarStack crush fix, items-per-pull local-buffer pattern. Resonance candidate population, consensus flow, and visual system live underneath.
 
 **Architectural decisions locked** (see `decisions.md` for the full reasoning):
 
@@ -157,8 +157,10 @@ These are drub's principles, demonstrated working in Resonance and now applied t
 19. Trigger: per-user "Pull from my Resonance" button.
 20. Candidate shape: title, type, year, multi-attribution addedBy.
 21. Items per pull: host-configurable, default 5.
+22. Mobile breakpoint strategy: single breakpoint at sm (640px).
+23. Touch targets: 44px on mobile via Button primitive shim.
 
-**Next step**: Mobile breakpoints and polish (build step 8). Responsive layout, empty states, edge cases.
+**Next step**: Deploy and real-user test (build step 9). Ship to Vercel, run a session with a friend.
 
 ## Build steps (rough order, not strict)
 
@@ -172,8 +174,8 @@ Drub said no week-by-week — here are the discrete steps. Adjust as we learn.
 6. **Visual system pass**: ✅ tokens, four primitives, voter-convergence hero. Spec at `docs/superpowers/specs/2026-05-09-visual-system-design.md`.
 7. **Consensus flow**: ✅ configurable threshold, random tiebreaker, lock + reconsider, hero card reveal.
 7.5. **Resonance candidate population**: ✅ per-user pull, hybrid mix, multi-attribution, host-configurable volume.
-8. **Mobile breakpoints + polish**: ← here. Responsive layout, empty states, edge cases.
-9. **Deploy + real-user test**: ship to Vercel, run it with a friend.
+8. **Mobile breakpoints + polish**: ✅ stacked rows on mobile, 44px touch targets, avatar crush + items-per-pull fixes.
+9. **Deploy + real-user test**: ← here. Ship to Vercel, run it with a friend.
 
 ## External dependencies
 
