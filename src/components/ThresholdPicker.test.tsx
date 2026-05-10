@@ -120,41 +120,26 @@ describe("ThresholdPicker items-per-pull", () => {
     expect(screen.getByLabelText(/items per pull/i)).toBeInTheDocument();
   });
 
-  it("emits onCandidatesPerPullChange with the new value", async () => {
+  it("emits onCandidatesPerPullChange on blur with the committed value", async () => {
     const onCandidatesPerPullChange = vi.fn<(n: number) => void>();
-    let currentValue = 5;
-    const { rerender } = render(
+    render(
       <ThresholdPicker
         threshold={{ kind: "unanimous" }}
         isHost={true}
         presentCount={3}
         onChange={() => {}}
-        candidatesPerPull={currentValue}
-        onCandidatesPerPullChange={(n) => {
-          currentValue = n;
-          onCandidatesPerPullChange(n);
-          rerender(
-            <ThresholdPicker
-              threshold={{ kind: "unanimous" }}
-              isHost={true}
-              presentCount={3}
-              onChange={() => {}}
-              candidatesPerPull={n}
-              onCandidatesPerPullChange={onCandidatesPerPullChange}
-            />,
-          );
-        }}
+        candidatesPerPull={5}
+        onCandidatesPerPullChange={onCandidatesPerPullChange}
       />,
     );
     const input = screen.getByLabelText(/items per pull/i);
     await userEvent.clear(input);
     await userEvent.type(input, "8");
-    // Final emission should have value 8 (each keystroke fires for controlled inputs).
-    const lastCall =
-      onCandidatesPerPullChange.mock.calls[
-        onCandidatesPerPullChange.mock.calls.length - 1
-      ];
-    expect(lastCall?.[0]).toBe(8);
+    // No commit during typing.
+    expect(onCandidatesPerPullChange).not.toHaveBeenCalled();
+    // Commit on blur.
+    await userEvent.tab();
+    expect(onCandidatesPerPullChange).toHaveBeenCalledWith(8);
   });
 
   it("shows read-only items-per-pull text for non-hosts", () => {

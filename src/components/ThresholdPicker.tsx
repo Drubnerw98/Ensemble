@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Card } from "./ui";
 import type { ThresholdRule } from "../lib/liveblocks";
 
@@ -22,6 +23,25 @@ export function ThresholdPicker({
   candidatesPerPull: number;
   onCandidatesPerPullChange: (n: number) => void;
 }) {
+  const [perPullDraft, setPerPullDraft] = useState(String(candidatesPerPull));
+
+  useEffect(() => {
+    setPerPullDraft(String(candidatesPerPull));
+  }, [candidatesPerPull]);
+
+  function commitPerPull() {
+    const n = Number(perPullDraft);
+    if (!Number.isFinite(n) || n < 1) {
+      // Invalid or empty: snap back to current prop.
+      setPerPullDraft(String(candidatesPerPull));
+      return;
+    }
+    const floored = Math.floor(n);
+    if (floored !== candidatesPerPull) {
+      onCandidatesPerPullChange(floored);
+    }
+  }
+
   function handleKindChange(kind: ThresholdRule["kind"]) {
     if (kind === "first-to-n") {
       const defaultN = Math.max(2, Math.ceil(presentCount / 2));
@@ -34,13 +54,6 @@ export function ThresholdPicker({
   function handleNChange(value: number) {
     if (Number.isFinite(value) && value >= 1) {
       onChange({ kind: "first-to-n", n: Math.floor(value) });
-    }
-  }
-
-  function handlePerPullChange(raw: string) {
-    const value = Number(raw);
-    if (Number.isFinite(value)) {
-      onCandidatesPerPullChange(Math.floor(value));
     }
   }
 
@@ -61,7 +74,7 @@ export function ThresholdPicker({
                   onChange={(e) =>
                     handleKindChange(e.target.value as ThresholdRule["kind"])
                   }
-                  className="rounded-md border border-border bg-transparent px-3 py-1.5 text-text focus:border-border-strong focus:outline-none"
+                  className="rounded-md border border-border bg-transparent px-3 py-1.5 text-text focus:border-border-strong focus:outline-none min-h-11 sm:min-h-0"
                 >
                   {(Object.keys(RULE_LABELS) as ThresholdRule["kind"][]).map(
                     (kind) => (
@@ -80,7 +93,7 @@ export function ThresholdPicker({
                       min={1}
                       value={threshold.n}
                       onChange={(e) => handleNChange(Number(e.target.value))}
-                      className="w-16 rounded-md border border-border bg-transparent px-2 py-1 text-text focus:border-border-strong focus:outline-none"
+                      className="w-16 rounded-md border border-border bg-transparent px-2 py-1 text-text focus:border-border-strong focus:outline-none min-h-11 sm:min-h-0"
                     />
                   </label>
                 ) : null}
@@ -106,9 +119,16 @@ export function ThresholdPicker({
                   type="number"
                   min={1}
                   max={20}
-                  value={candidatesPerPull}
-                  onChange={(e) => handlePerPullChange(e.target.value)}
-                  className="w-16 rounded-md border border-border bg-transparent px-2 py-1 text-text focus:border-border-strong focus:outline-none"
+                  value={perPullDraft}
+                  onChange={(e) => setPerPullDraft(e.target.value)}
+                  onBlur={commitPerPull}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      commitPerPull();
+                      (e.currentTarget as HTMLInputElement).blur();
+                    }
+                  }}
+                  className="w-16 rounded-md border border-border bg-transparent px-2 py-1 text-text focus:border-border-strong focus:outline-none min-h-11 sm:min-h-0"
                 />
               </label>
             ) : (
