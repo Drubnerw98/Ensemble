@@ -41,6 +41,8 @@ export type Consensus = {
   [key: string]: Lson | undefined;
 };
 
+// Module augmentation tells Liveblocks' hooks (useStorage, useSelf, etc.)
+// what shape our room data has so they're typed end-to-end.
 declare global {
   interface Liveblocks {
     Presence: Record<string, never>;
