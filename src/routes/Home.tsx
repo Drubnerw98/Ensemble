@@ -7,6 +7,9 @@ import {
   isValidSessionCode,
 } from "../lib/sessionCode";
 import { Button, Card, Eyebrow } from "../components/ui";
+import { ConvergenceGlyph } from "../components/ConvergenceGlyph";
+import { EcosystemSwitcher } from "../components/EcosystemSwitcher";
+import { SiteFooter } from "../components/SiteFooter";
 
 export function Home() {
   const { user } = useUser();
@@ -32,11 +35,21 @@ export function Home() {
 
   return (
     <main className="min-h-screen bg-bg p-6 text-text">
-      <header className="mx-auto flex max-w-3xl items-center justify-between">
-        <Eyebrow>Ensemble</Eyebrow>
-        <UserButton
-          appearance={{ elements: { userButtonAvatarBox: "h-8 w-8" } }}
-        />
+      <header className="mx-auto flex max-w-3xl items-center justify-between gap-4">
+        <div className="flex items-center gap-2.5">
+          <span className="text-accent">
+            <ConvergenceGlyph size={20} />
+          </span>
+          <Eyebrow>Ensemble</Eyebrow>
+        </div>
+        <div className="flex items-center gap-5">
+          <div className="hidden sm:block">
+            <EcosystemSwitcher current="ensemble" />
+          </div>
+          <UserButton
+            appearance={{ elements: { userButtonAvatarBox: "h-8 w-8" } }}
+          />
+        </div>
       </header>
 
       <section className="mx-auto mt-16 max-w-3xl space-y-8">
@@ -100,6 +113,8 @@ export function Home() {
           </Card.Body>
         </Card>
       </section>
+
+      <SiteFooter />
     </main>
   );
 }

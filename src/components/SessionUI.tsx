@@ -5,8 +5,10 @@ import { useConsensusRoom } from "../hooks/useConsensusRoom";
 import type { ThresholdRule } from "../lib/liveblocks";
 import { Button, Card } from "./ui";
 import { CandidatesPanel } from "./CandidatesPanel";
+import { EcosystemSwitcher } from "./EcosystemSwitcher";
 import { HeroCard } from "./HeroCard";
 import { ReadyCard } from "./ReadyCard";
+import { SiteFooter } from "./SiteFooter";
 import { ThresholdPicker } from "./ThresholdPicker";
 
 const EMPTY_VOTER_LIST: readonly string[] = [];
@@ -17,7 +19,7 @@ export function SessionUI({ code }: { code: string }) {
 
   return (
     <main className="min-h-screen bg-bg p-6 text-text">
-      <header className="mx-auto flex max-w-3xl items-center justify-between">
+      <header className="mx-auto flex max-w-3xl items-center justify-between gap-4">
         <button
           type="button"
           onClick={() => navigate("/")}
@@ -25,9 +27,14 @@ export function SessionUI({ code }: { code: string }) {
         >
           ← Ensemble
         </button>
-        <UserButton
-          appearance={{ elements: { userButtonAvatarBox: "h-8 w-8" } }}
-        />
+        <div className="flex items-center gap-5">
+          <div className="hidden sm:block">
+            <EcosystemSwitcher current="ensemble" />
+          </div>
+          <UserButton
+            appearance={{ elements: { userButtonAvatarBox: "h-8 w-8" } }}
+          />
+        </div>
       </header>
 
       <section className="mx-auto mt-12 max-w-3xl space-y-8">
@@ -123,6 +130,8 @@ export function SessionUI({ code }: { code: string }) {
           />
         ) : null}
       </section>
+
+      <SiteFooter />
     </main>
   );
 }
