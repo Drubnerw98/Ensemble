@@ -7,6 +7,7 @@ import { Button, Card } from "./ui";
 import { CandidatesPanel } from "./CandidatesPanel";
 import { EcosystemSwitcher } from "./EcosystemSwitcher";
 import { HeroCard } from "./HeroCard";
+import { MemberChip } from "./MemberChip";
 import { ReadyCard } from "./ReadyCard";
 import { SiteFooter } from "./SiteFooter";
 import { ThresholdPicker } from "./ThresholdPicker";
@@ -79,14 +80,16 @@ export function SessionUI({ code }: { code: string }) {
                 name={room.self.info?.name}
                 avatarUrl={room.self.info?.avatarUrl}
                 isYou
-                done={room.self.presence?.votingComplete ?? false}
+                isHost={room.self.id === room.consensus.hostId}
+                ready={room.self.presence?.votingComplete ?? false}
               />
               {room.others.map((m) => (
                 <MemberChip
                   key={m.connectionId}
                   name={m.info?.name}
                   avatarUrl={m.info?.avatarUrl}
-                  done={m.presence?.votingComplete ?? false}
+                  isHost={m.id === room.consensus.hostId}
+                  ready={m.presence?.votingComplete ?? false}
                 />
               ))}
             </ul>
@@ -168,44 +171,6 @@ function ConnectionBanner({ status }: { status: ConnectionStatus }) {
         {label}
       </span>
     </div>
-  );
-}
-
-function MemberChip({
-  name,
-  avatarUrl,
-  isYou,
-  done,
-}: {
-  name?: string;
-  avatarUrl?: string;
-  isYou?: boolean;
-  done?: boolean;
-}) {
-  return (
-    <li className="flex items-center gap-2 rounded-full border border-border px-3 py-1 text-xs text-text">
-      {avatarUrl ? (
-        <img
-          src={avatarUrl}
-          alt=""
-          referrerPolicy="no-referrer"
-          className="h-5 w-5 rounded-full object-cover"
-        />
-      ) : (
-        <span className="inline-block h-5 w-5 rounded-full bg-white/10" />
-      )}
-      <span>
-        {name ?? "Anonymous"}
-        {isYou && <span className="ml-1 text-text-muted">(you)</span>}
-      </span>
-      {done ? (
-        <span
-          aria-label="ready"
-          title="Ready"
-          className="inline-block h-2 w-2 rounded-full bg-accent"
-        />
-      ) : null}
-    </li>
   );
 }
 

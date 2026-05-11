@@ -16,11 +16,13 @@ describe("ThresholdPicker", () => {
         onCandidatesPerPullChange={() => {}}
       />,
     );
-    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("radiogroup", { name: /threshold rule/i }),
+    ).not.toBeInTheDocument();
     expect(screen.getByText(/unanimous/i)).toBeInTheDocument();
   });
 
-  it("renders a select when isHost is true", () => {
+  it("renders the segmented threshold control when isHost is true", () => {
     render(
       <ThresholdPicker
         threshold={{ kind: "unanimous" }}
@@ -31,7 +33,11 @@ describe("ThresholdPicker", () => {
         onCandidatesPerPullChange={() => {}}
       />,
     );
-    expect(screen.getByRole("combobox")).toBeInTheDocument();
+    const group = screen.getByRole("radiogroup", { name: /threshold rule/i });
+    expect(group).toBeInTheDocument();
+    expect(
+      screen.getByRole("radio", { name: /unanimous/i }),
+    ).toHaveAttribute("aria-checked", "true");
   });
 
   it("emits onChange with the selected rule", async () => {
@@ -46,11 +52,11 @@ describe("ThresholdPicker", () => {
         onCandidatesPerPullChange={() => {}}
       />,
     );
-    await userEvent.selectOptions(screen.getByRole("combobox"), "majority");
+    await userEvent.click(screen.getByRole("radio", { name: /majority/i }));
     expect(onChange).toHaveBeenCalledWith({ kind: "majority" });
   });
 
-  it("shows the N input only when first-to-n is selected", () => {
+  it("shows the N stepper only when first-to-n is selected", () => {
     const { rerender } = render(
       <ThresholdPicker
         threshold={{ kind: "unanimous" }}
@@ -62,7 +68,7 @@ describe("ThresholdPicker", () => {
       />,
     );
     expect(
-      screen.queryByLabelText(/first-to-n value/i),
+      screen.queryByRole("group", { name: /first-to-n value/i }),
     ).not.toBeInTheDocument();
 
     rerender(
@@ -75,7 +81,9 @@ describe("ThresholdPicker", () => {
         onCandidatesPerPullChange={() => {}}
       />,
     );
-    expect(screen.getByLabelText(/first-to-n value/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("group", { name: /first-to-n value/i }),
+    ).toBeInTheDocument();
   });
 
   it("warns when N exceeds present count", () => {
@@ -94,7 +102,7 @@ describe("ThresholdPicker", () => {
 });
 
 describe("ThresholdPicker items-per-pull", () => {
-  it("renders the items-per-pull input only for the host", () => {
+  it("renders the items-per-pull stepper only for the host", () => {
     const { rerender } = render(
       <ThresholdPicker
         threshold={{ kind: "unanimous" }}
@@ -105,7 +113,9 @@ describe("ThresholdPicker items-per-pull", () => {
         onCandidatesPerPullChange={() => {}}
       />,
     );
-    expect(screen.queryByLabelText(/items per pull/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("group", { name: /items per pull/i }),
+    ).not.toBeInTheDocument();
 
     rerender(
       <ThresholdPicker
@@ -117,10 +127,12 @@ describe("ThresholdPicker items-per-pull", () => {
         onCandidatesPerPullChange={() => {}}
       />,
     );
-    expect(screen.getByLabelText(/items per pull/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("group", { name: /items per pull/i }),
+    ).toBeInTheDocument();
   });
 
-  it("emits onCandidatesPerPullChange on blur with the committed value", async () => {
+  it("emits onCandidatesPerPullChange when stepping up", async () => {
     const onCandidatesPerPullChange = vi.fn<(n: number) => void>();
     render(
       <ThresholdPicker
@@ -132,14 +144,28 @@ describe("ThresholdPicker items-per-pull", () => {
         onCandidatesPerPullChange={onCandidatesPerPullChange}
       />,
     );
-    const input = screen.getByLabelText(/items per pull/i);
-    await userEvent.clear(input);
-    await userEvent.type(input, "8");
-    // No commit during typing.
-    expect(onCandidatesPerPullChange).not.toHaveBeenCalled();
-    // Commit on blur.
-    await userEvent.tab();
-    expect(onCandidatesPerPullChange).toHaveBeenCalledWith(8);
+    await userEvent.click(
+      screen.getByRole("button", { name: /increase items per pull/i }),
+    );
+    expect(onCandidatesPerPullChange).toHaveBeenCalledWith(6);
+  });
+
+  it("disables decrement at the minimum", async () => {
+    const onCandidatesPerPullChange = vi.fn<(n: number) => void>();
+    render(
+      <ThresholdPicker
+        threshold={{ kind: "unanimous" }}
+        isHost={true}
+        presentCount={3}
+        onChange={() => {}}
+        candidatesPerPull={1}
+        onCandidatesPerPullChange={onCandidatesPerPullChange}
+      />,
+    );
+    const decrement = screen.getByRole("button", {
+      name: /decrease items per pull/i,
+    });
+    expect(decrement).toBeDisabled();
   });
 
   it("shows read-only items-per-pull text for non-hosts", () => {

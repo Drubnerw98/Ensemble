@@ -1,6 +1,7 @@
 import { AvatarStack, Button } from "./ui";
 import { ReactionRow, type ReactionState } from "./ReactionRow";
 import { RoomFitChips } from "./RoomFitChips";
+import { ThresholdMeter } from "./ThresholdMeter";
 import type { ReactionKind } from "../lib/liveblocks";
 import type { UserInfo } from "../lib/types";
 import type { WhyChip } from "../lib/whyForRoom";
@@ -51,11 +52,10 @@ export function CandidateRow({
 }: Props) {
   const meta = formatMeta(candidate.type, candidate.year);
   const pullerCaption = formatPullers(pullerIds, userInfoById);
-  const crossed = voterIds.length >= votesNeeded;
 
   return (
     <li
-      className={`flex flex-col gap-2 rounded-md border border-border bg-bg/40 px-3 py-2 text-sm${
+      className={`flex flex-col gap-2 rounded-md border border-border bg-bg/40 px-3 py-2 text-sm transition-colors hover:border-border-strong${
         justDecided ? " animate-row-pulse" : ""
       }`}
     >
@@ -95,14 +95,11 @@ export function CandidateRow({
               highlight={voted}
             />
             {showThresholdMeter ? (
-              <span
-                className={`shrink-0 whitespace-nowrap font-display text-[10px] font-medium tracking-[0.2em] uppercase ${
-                  crossed ? "text-accent" : "text-text-muted"
-                }`}
-                aria-label={`${voterIds.length} of ${votesNeeded} votes needed`}
-              >
-                {voterIds.length} / {votesNeeded}
-              </span>
+              <ThresholdMeter
+                current={voterIds.length}
+                needed={votesNeeded}
+                justDecided={justDecided ?? false}
+              />
             ) : voterIds.length > 3 ? (
               <span className="text-xs text-text-muted">{voterIds.length}</span>
             ) : null}

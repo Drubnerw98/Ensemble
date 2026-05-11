@@ -9,7 +9,7 @@ type ButtonProps = {
 } & ButtonHTMLAttributes<HTMLButtonElement>;
 
 const BASE =
-  "inline-flex items-center justify-center rounded-md font-medium transition-colors cursor-pointer disabled:cursor-default disabled:opacity-30 focus:outline-none focus:ring-2 focus:ring-accent/50 focus:ring-offset-2 focus:ring-offset-bg";
+  "inline-flex items-center justify-center rounded-md font-medium cursor-pointer transition duration-150 active:scale-[0.98] disabled:cursor-default disabled:opacity-30 disabled:active:scale-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-bg";
 
 const VARIANTS: Record<Variant, string> = {
   primary: "bg-accent text-bg hover:bg-accent/90",

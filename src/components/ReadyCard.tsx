@@ -19,9 +19,19 @@ export function ReadyCard({
   onToggleReady: (ready: boolean) => void;
   onFinalizeNow: () => void;
 }) {
+  // When you've flagged ready, the card picks up a soft saffron ring — your
+  // contribution is in, the visual anchor is "waiting on others" not "act now."
+  const cardClass = selfReady
+    ? "transition-colors ring-1 ring-accent/30"
+    : "transition-colors";
+
+  const eyebrowLabel = selfReady
+    ? `Waiting on others · ${readyCount} / ${presentCount}`
+    : `Ready · ${readyCount} / ${presentCount}`;
+
   return (
-    <Card>
-      <Card.Eyebrow>{`Ready · ${readyCount} / ${presentCount}`}</Card.Eyebrow>
+    <Card className={cardClass}>
+      <Card.Eyebrow>{eyebrowLabel}</Card.Eyebrow>
       <Card.Body>
         <div className="flex flex-wrap items-center gap-3">
           <Button
@@ -38,6 +48,13 @@ export function ReadyCard({
               size="sm"
               variant="secondary"
               disabled={finalizeDisabled}
+              title={
+                finalizeDisabled
+                  ? noConsensusYet
+                    ? "No candidate has crossed the threshold yet"
+                    : "Nothing to finalize"
+                  : undefined
+              }
               onClick={onFinalizeNow}
             >
               Finalize now

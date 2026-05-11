@@ -1,6 +1,11 @@
-import { useState } from "react";
-import { Card } from "./ui";
+import { Card, SegmentedControl, Stepper } from "./ui";
 import type { ThresholdRule } from "../lib/liveblocks";
+
+const RULE_OPTIONS: readonly { value: ThresholdRule["kind"]; label: string }[] = [
+  { value: "unanimous", label: "Unanimous" },
+  { value: "majority", label: "Majority" },
+  { value: "first-to-n", label: "First to N" },
+];
 
 const RULE_LABELS: Record<ThresholdRule["kind"], string> = {
   unanimous: "Unanimous",
@@ -23,32 +28,6 @@ export function ThresholdPicker({
   candidatesPerPull: number;
   onCandidatesPerPullChange: (n: number) => void;
 }) {
-  const [perPullDraft, setPerPullDraft] = useState(String(candidatesPerPull));
-  const [prevCandidatesPerPull, setPrevCandidatesPerPull] = useState(candidatesPerPull);
-
-  // Derived state: when the prop changes (e.g., storage round-trips a clamped
-  // value back), reset the local draft. React pattern for derived state that
-  // satisfies react-hooks/set-state-in-effect: call setState during render
-  // when the upstream value changes, discarding the current render and
-  // immediately re-rendering with both state values updated.
-  if (prevCandidatesPerPull !== candidatesPerPull) {
-    setPrevCandidatesPerPull(candidatesPerPull);
-    setPerPullDraft(String(candidatesPerPull));
-  }
-
-  function commitPerPull() {
-    const n = Number(perPullDraft);
-    if (!Number.isFinite(n) || n < 1) {
-      // Invalid or empty: snap back to current prop.
-      setPerPullDraft(String(candidatesPerPull));
-      return;
-    }
-    const floored = Math.floor(n);
-    if (floored !== candidatesPerPull) {
-      onCandidatesPerPullChange(floored);
-    }
-  }
-
   function handleKindChange(kind: ThresholdRule["kind"]) {
     if (kind === "first-to-n") {
       const defaultN = Math.max(2, Math.ceil(presentCount / 2));
@@ -58,10 +37,8 @@ export function ThresholdPicker({
     }
   }
 
-  function handleNChange(value: number) {
-    if (Number.isFinite(value) && value >= 1) {
-      onChange({ kind: "first-to-n", n: Math.floor(value) });
-    }
+  function handleNChange(n: number) {
+    onChange({ kind: "first-to-n", n });
   }
 
   const showWarning =
@@ -71,44 +48,33 @@ export function ThresholdPicker({
     <Card>
       <Card.Eyebrow>Threshold</Card.Eyebrow>
       <Card.Body>
-        <div className="space-y-3 text-sm text-text">
+        <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-3">
             {isHost ? (
               <>
-                <select
-                  aria-label="Threshold rule"
+                <SegmentedControl
+                  ariaLabel="Threshold rule"
+                  options={RULE_OPTIONS}
                   value={threshold.kind}
-                  onChange={(e) =>
-                    handleKindChange(e.target.value as ThresholdRule["kind"])
-                  }
-                  className="rounded-md border border-border bg-transparent px-3 py-1.5 text-text focus:border-border-strong focus:outline-none min-h-11 sm:min-h-0"
-                >
-                  {(Object.keys(RULE_LABELS) as ThresholdRule["kind"][]).map(
-                    (kind) => (
-                      <option key={kind} value={kind}>
-                        {RULE_LABELS[kind]}
-                      </option>
-                    ),
-                  )}
-                </select>
+                  onChange={handleKindChange}
+                />
                 {threshold.kind === "first-to-n" ? (
-                  <label className="flex items-center gap-2 text-text-muted">
-                    N:
-                    <input
-                      aria-label="First-to-N value"
-                      type="number"
-                      min={1}
+                  <label className="flex items-center gap-2 text-xs tracking-wide text-text-muted">
+                    <span className="font-display uppercase">N</span>
+                    <Stepper
+                      ariaLabel="First-to-N value"
                       value={threshold.n}
-                      onChange={(e) => handleNChange(Number(e.target.value))}
-                      className="w-16 rounded-md border border-border bg-transparent px-2 py-1 text-text focus:border-border-strong focus:outline-none min-h-11 sm:min-h-0"
+                      min={1}
+                      max={Math.max(presentCount, 20)}
+                      onChange={handleNChange}
                     />
                   </label>
                 ) : null}
               </>
             ) : (
-              <span>
+              <span className="text-sm text-text">
                 {RULE_LABELS[threshold.kind]}
-                {threshold.kind === "first-to-n" ? ` (N=${threshold.n})` : null}
+                {threshold.kind === "first-to-n" ? ` · N=${threshold.n}` : null}
               </span>
             )}
             {showWarning ? (
@@ -117,29 +83,22 @@ export function ThresholdPicker({
               </span>
             ) : null}
           </div>
-          <div className="flex flex-wrap items-center gap-3 text-text-muted">
+          <div className="flex flex-wrap items-center gap-3 text-xs tracking-wide text-text-muted">
             {isHost ? (
               <label className="flex items-center gap-2">
-                Items per pull:
-                <input
-                  aria-label="Items per pull"
-                  type="number"
+                <span className="font-display uppercase">Items per pull</span>
+                <Stepper
+                  ariaLabel="Items per pull"
+                  value={candidatesPerPull}
                   min={1}
                   max={20}
-                  value={perPullDraft}
-                  onChange={(e) => setPerPullDraft(e.target.value)}
-                  onBlur={commitPerPull}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      commitPerPull();
-                      (e.currentTarget as HTMLInputElement).blur();
-                    }
-                  }}
-                  className="w-16 rounded-md border border-border bg-transparent px-2 py-1 text-text focus:border-border-strong focus:outline-none min-h-11 sm:min-h-0"
+                  onChange={onCandidatesPerPullChange}
                 />
               </label>
             ) : (
-              <span>Items per pull: {candidatesPerPull}</span>
+              <span className="text-sm text-text">
+                Items per pull: {candidatesPerPull}
+              </span>
             )}
           </div>
         </div>

@@ -3,6 +3,7 @@ import { useAuth } from "@clerk/clerk-react";
 import { Button, Card } from "./ui";
 import { CandidateAutocomplete } from "./CandidateAutocomplete";
 import { CandidateRow } from "./CandidateRow";
+import { ConvergenceGlyph } from "./ConvergenceGlyph";
 import { type ReactionState } from "./ReactionRow";
 import { searchTmdb, type TmdbResult } from "../lib/tmdb";
 import type { ReactionKind } from "../lib/liveblocks";
@@ -126,7 +127,10 @@ export function CandidatesPanel({
 
         {candidates.length === 0 ? (
           <div className="mt-6 flex flex-col items-center justify-center rounded-md border border-border/60 bg-bg/30 px-6 py-10 text-center">
-            <p className="font-display text-lg font-light tracking-tight text-text">
+            <span className="text-accent/70">
+              <ConvergenceGlyph size={32} />
+            </span>
+            <p className="mt-4 font-display text-lg font-light tracking-tight text-text">
               What are we watching tonight?
             </p>
             <p className="mt-2 max-w-sm text-sm text-text-muted">
