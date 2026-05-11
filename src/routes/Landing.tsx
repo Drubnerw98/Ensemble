@@ -10,7 +10,8 @@ export function Landing() {
           Decide together.
         </h1>
         <p className="mt-3 text-sm text-text-muted">
-          Real-time taste convergence. Sign in with your Resonance account.
+          Real-time voting on titles pulled from each person's Resonance.
+          Sign in to start a session.
         </p>
         <div className="mt-8">
           <SignInButton mode="modal">
