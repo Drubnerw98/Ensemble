@@ -14,6 +14,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-05-09 — Light theme](#2026-05-09--light-theme)
   - [2026-05-09 — Disabled controls need accessible reason](#2026-05-09--disabled-controls-need-accessible-reason)
   - [2026-05-10 — Integration coverage for the all-present-Done gating effect](#2026-05-10--integration-coverage-for-the-all-present-done-gating-effect)
+  - [2026-05-10 — Departed member attribution renders as "anonymous"](#2026-05-10--departed-member-attribution-renders-as-anonymous)
 - [Resolved](#resolved)
   - [2026-05-09 — Winning candidate row pulse on consensus transition](#2026-05-09--winning-candidate-row-pulse-on-consensus-transition-1)
   - [2026-05-09 — Voter avatars crush on candidate rows under multi-vote load](#2026-05-09--voter-avatars-crush-on-candidate-rows-under-multi-vote-load)
@@ -148,6 +149,29 @@ Note (2026-05-09): all three currently have SVG favicons that follow a loose fam
 **Open questions:**
 
 - Land alongside the connector extraction, or separately first as a Liveblocks-test-utils integration test?
+
+### 2026-05-10 — Departed member attribution renders as "anonymous"
+
+**What:** When a member who pulled candidates or added a manual entry leaves the lobby, their attribution chip on those candidate rows flips to "anonymous". The candidate stays in the pool (correct), but the attribution that made it meaningful (whose taste contributed this) is lost retroactively.
+
+**Why noticed:** Surfaced during the 2026-05-10 deploy smoke test. Drub spun up a session in two tabs and confirmed the chip transition on tab close.
+
+**Anchors:** wherever the candidate row renders attribution chips (likely `CandidateRow.tsx` or the new cross-attribution component shipped in commit `bf745f9`), the `addedBy` shape on the candidate storage entry, and the resolver that maps `addedBy` ids back to live presence.
+
+**What's been considered:** Three shapes:
+
+1. Snapshot the display name (and optionally avatar URL) at the moment of pull / manual add. Attribution becomes data tied to the act, not the live presence. Survives departure.
+2. Show "anonymous" but soften it visually so it reads as "former member" rather than a bug.
+3. Hide the chip when the member is gone. Loses signal entirely.
+
+Option 1 is cleanest and matches how decisions log treats attribution generally: the act is the source of truth, not the live state.
+
+**Shape of work:** Small refactor on the candidate storage shape (`Candidate.addedBy: UserInfo[]` already carries the data, but the rendered name probably resolves through live presence). Either widen the stored UserInfo to include displayName at write time, or memoize a `lastSeenNames` map in storage so departed members keep their chip text. Estimate: an hour or two, mostly schema confirmation and one component change.
+
+**Open questions:**
+
+- Snapshot avatar too, or just displayName? Avatar URLs from Clerk are stable, so snapshotting them is safe but storage-shape churn.
+- If the same Clerk user rejoins later, should the snapshot update to their current name, or stay frozen at the first snapshot? Probably update on rejoin, since the membership identity is preserved.
 
 ## Resolved
 
