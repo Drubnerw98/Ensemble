@@ -162,6 +162,7 @@ These are drub's principles, demonstrated working in Resonance and now applied t
 24. Finalize-voting: per-user Done flag in Presence, all-present-Done auto-finalizes, host has Finalize-now override.
 25. TMDB integration: serverless proxy hides v3 read token, candidate schema gains optional posterUrl + tmdbId, autocomplete on manual entry with freeform fallback, Resonance pulls enriched before storage write.
 26. Reactions on candidates: 4-button fixed set (thumbsUp, heart, thinking, yikes), LiveMap storage, toggle-on-tap, disabled when locked.
+27. Pull-from-Resonance source picker: a `From` dropdown next to the Pull button with Blend (default), My watchlist, Random batch, and per-batch options. Non-blend sources fetch on-demand from Resonance (`/api/recommendations?batch=X`, `/api/library` filtered to status=watchlist) and feed the existing `pickCandidates` filter. Batches list lazy-loads on first picker focus via `useResonanceBatches`.
 
 **Next step**: Deploy and real-user test (build step 9). Ship to Vercel, run a session with a friend.
 
