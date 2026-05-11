@@ -381,3 +381,18 @@ The `Why` line in each entry is what an interviewer will hear from drub when ask
 **Tradeoff accepted**: Storage grows by one LiveMap with four LiveLists per reacted-on candidate. Acceptable for ephemeral rooms with small candidate counts.
 
 **Would revisit if**: Users actively want a "seen it" marker or other states (extend to 5-button), or reactions become so dense they crowd the row visually (move to hover-reveal or collapse when all-zero).
+
+
+---
+
+## 2026-05-11 -- Pull-from-Resonance source picker (batch / watchlist / random)
+
+**Considered**: `status quo` (single Pull button reading the blended profile-export payload), `always-on source picker dropdown` (chosen), `separate buttons per source` (Pull from watchlist / Pull from latest batch / etc).
+
+**Decision**: A `<select>` next to the Pull button with options Blend (default), My watchlist, Random batch, and a per-batch list inside an optgroup. Source is encoded as a stringly-typed `SourceValue` ("blend" | "watchlist" | "random-batch" | `batch:<id>`) and decoded into a discriminated `PullSource` union before being passed to handlePull. Batches list lazy-loads on first picker focus via `useResonanceBatches` hook (caches per-mount). Non-blend sources fetch their own data from Resonance (`/api/recommendations?batch=X`, `/api/library` filtered to status=watchlist) and feed it through the existing `pickCandidates` filter as recommendations-only so the library-share split degenerates cleanly.
+
+**Why**: Kevin's UX feedback on 2026-05-11 surfaced four adjacent requests that all share a single shape: "pull from specific batch", "pull from my watchlist", "list batches available", "random-from-batches". One dropdown covers all four without four buttons cluttering the panel. Lazy-load avoids hitting Resonance until the user actually wants the picker. Reusing pickCandidates as the post-fetch filter keeps the watchable-types and exclusion logic in one place rather than duplicating it per source. Stringly-typed select value is the path of least friction inside a single `<select>`; the decoded union is type-safe everywhere it matters.
+
+**Tradeoff accepted**: One Resonance round-trip per pull when the user picks anything other than Blend. Acceptable because Blend stays the default (covered by the cached export), and the other sources are deliberate user actions that imply waiting. The picker UI is slightly busier than a single button.
+
+**Would revisit if**: Users overwhelmingly stay on Blend (suggests the picker is friction without payoff, drop it), or specific batches grow large enough that the dropdown becomes unwieldy (move to a popover with search).

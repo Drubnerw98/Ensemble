@@ -30,6 +30,21 @@ import {
 } from "../lib/candidates";
 import { searchTmdb, pickBestMatch } from "../lib/tmdb";
 import { useResonanceProfile } from "./useResonanceProfile";
+import {
+  fetchBatchRecommendations,
+  fetchWatchlist,
+} from "../lib/api";
+import type { ResonanceItem } from "../types/profile";
+
+/** Where a Pull draws from. "blend" mirrors the existing behavior (mixed
+ * library + recs at LIBRARY_SHARE). "watchlist" pulls only plan-to items.
+ * "batch" pulls only the recs in one Resonance batch. "random-batch" picks
+ * one batch at random and pulls from it — Kevin's "zany" mode. */
+export type PullSource =
+  | { kind: "blend" }
+  | { kind: "watchlist" }
+  | { kind: "batch"; batchId: string }
+  | { kind: "random-batch"; batchIds: readonly string[] };
 
 function reactionStateFor(
   list: readonly string[] | undefined,
@@ -423,7 +438,7 @@ export function useConsensusRoom() {
 
   const [pulling, setPulling] = useState(false);
 
-  const handlePull = async () => {
+  const handlePull = async (source: PullSource = { kind: "blend" }) => {
     if (profile.state !== "ready") return;
     if (consensus.phase !== "voting") return;
     setPulling(true);
@@ -446,14 +461,51 @@ export function useConsensusRoom() {
       // items from the user's library/recs instead of dedup-no-ops.
       const excluded = new Set<string>();
       for (const c of candidates) excluded.add(normalizeTitle(c.title));
-      const picks = pickCandidates(
-        profile.data,
-        consensus.candidatesPerPull,
-        excluded,
-      );
+
+      // Build the candidate pool for this pull. Default "blend" reads from
+      // the cached profile snapshot (no extra network call). "watchlist"
+      // and "batch"/"random-batch" hit Resonance for fresh data — these
+      // datasets aren't part of /api/profile/export.
+      let picks: PickedCandidate[] = [];
+      if (source.kind === "blend") {
+        picks = pickCandidates(
+          profile.data,
+          consensus.candidatesPerPull,
+          excluded,
+        );
+      } else {
+        const token = await getToken();
+        if (!token) return;
+        let items: ResonanceItem[] = [];
+        if (source.kind === "watchlist") {
+          items = await fetchWatchlist(token);
+        } else if (source.kind === "batch") {
+          items = await fetchBatchRecommendations(token, source.batchId);
+        } else {
+          // random-batch — pick one batchId uniformly and fetch it.
+          if (source.batchIds.length === 0) return;
+          const chosen =
+            source.batchIds[
+              Math.floor(Math.random() * source.batchIds.length)
+            ]!;
+          items = await fetchBatchRecommendations(token, chosen);
+        }
+        // Re-use the existing pickCandidates filter (allowed types,
+        // exclusion set, count cap). Feed the fetched items in as
+        // recommendations so the library-share split degenerates to "all
+        // from this single source".
+        picks = pickCandidates(
+          { library: [], recommendations: items },
+          consensus.candidatesPerPull,
+          excluded,
+        );
+      }
       if (picks.length === 0) return;
 
       const token = await getToken();
+      // The token may already have been fetched above for non-blend sources.
+      // getToken() is cheap and idempotent — second call returns the cached
+      // session token without a round-trip — so a second await here is safe.
 
       // Run all TMDB lookups in parallel. One failed lookup shouldn't
       // block the rest — Promise.allSettled gives each pick its own
