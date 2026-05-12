@@ -132,7 +132,7 @@ These are drub's principles, demonstrated working in Resonance and now applied t
 
 ## Current state
 
-**Phase**: TMDB integration shipped. Poster thumbnails on CandidateRow and HeroCard. Autocomplete on manual entry with freeform fallback. Resonance pulls enriched with TMDB metadata before storage write. Mobile polish, consensus flow, and visual system live underneath.
+**Phase**: Deployed to Vercel and friend-tested (2026-05-11). The full build steps list is complete: consensus flow, mobile polish, TMDB enrichment, Resonance source picker, real-user verification. Nothing reported broken from the friend test. Next push is the cross-site visual audit captured in `docs/followups.md`.
 
 **Architectural decisions locked** (see `decisions.md` for the full reasoning):
 
@@ -164,7 +164,7 @@ These are drub's principles, demonstrated working in Resonance and now applied t
 26. Reactions on candidates: 4-button fixed set (thumbsUp, heart, thinking, yikes), LiveMap storage, toggle-on-tap, disabled when locked.
 27. Pull-from-Resonance source picker: a `From` dropdown next to the Pull button with Blend (default), My watchlist, Random batch, and per-batch options. Non-blend sources fetch on-demand from Resonance (`/api/recommendations?batch=X`, `/api/library` filtered to status=watchlist) and feed the existing `pickCandidates` filter. Batches list lazy-loads on first picker focus via `useResonanceBatches`.
 
-**Next step**: Deploy and real-user test (build step 9). Ship to Vercel, run a session with a friend.
+**Next step**: Cross-site visual audit across Resonance + Constellation + Ensemble (favicon family, palette harmonization, motion vocabulary). Captured in `docs/followups.md`.
 
 ## Build steps (rough order, not strict)
 
@@ -179,7 +179,7 @@ Drub said no week-by-week — here are the discrete steps. Adjust as we learn.
 7. **Consensus flow**: ✅ configurable threshold, random tiebreaker, lock + reconsider, hero card reveal.
 7.5. **Resonance candidate population**: ✅ per-user pull, hybrid mix, multi-attribution, host-configurable volume.
 8. **Mobile breakpoints + polish**: ✅ stacked rows on mobile, 44px touch targets, avatar crush + items-per-pull fixes.
-9. **Deploy + real-user test**: ← here. Ship to Vercel, run it with a friend.
+9. **Deploy + real-user test**: ✅ deployed to Vercel + friend-tested (2026-05-11). No friction reported; nothing logged in followups from the session.
 
 ## External dependencies
 
